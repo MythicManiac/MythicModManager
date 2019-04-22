@@ -222,7 +222,7 @@ class Application():
     def __init__(self):
         self.api = ThunderstoreAPI()
         config = {
-            "risk_of_rain_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Risk of Raind 2"
+            "risk_of_rain_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Risk of Rain 2"
         }
         if os.path.exists("config.json"):
             with open("config.json", "r") as f:
@@ -233,7 +233,8 @@ class Application():
             risk_of_rain_path=config["risk_of_rain_path"],
         )
         self.build_window()
-        self.refresh_installed_mods()
+        if self.can_run:
+            self.refresh_installed_mods()
         self.last_values = None
         self.last_event = None
         self.last_selection = None
@@ -307,24 +308,25 @@ class Application():
             [self.progress_bar],
         ]
 
-        self.window = (
-            sg.Window("Mythic Mod Manager")
-            .Layout(self.layout)
-            .Finalize()
-        )
-
         if not os.path.exists(self.mod_manager.risk_of_rain_path):
+            self.can_run = False
             sg.Popup((
                 "Could not find your risk of rain installation path. " +
                 "Please add it in the config.json file"
             ))
-            exit()
+        else:
+            self.window = (
+                sg.Window("Mythic Mod Manager")
+                .Layout(self.layout)
+                .Finalize()
+            )
+            self.can_run = True
 
-        if not self.mod_manager.verify_bepinex():
-            sg.Popup((
-                "It seems you don't have BepInex installed. " +
-                "Please install it by clicking the 'Update BepInEx' button"
-            ))
+            if not self.mod_manager.verify_bepinex():
+                sg.Popup((
+                    "It seems you don't have BepInex installed. " +
+                    "Please install it by clicking the 'Update BepInEx' button"
+                ))
 
     def refresh_installed_mods(self):
         installed_packages = self.mod_manager.get_installed_packages()
@@ -466,7 +468,7 @@ class Application():
         self.progress_bar.UpdateBar(1000, 1000)
 
     def launch(self):
-        while True:
+        while self.can_run:
             event, values = self.window.Read(timeout=100)
             if values is None:
                 break
