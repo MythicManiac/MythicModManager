@@ -1,3 +1,7 @@
+# Custom
+
+manager/mod-cache
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
