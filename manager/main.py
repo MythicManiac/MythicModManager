@@ -40,7 +40,7 @@ class ThunderstoreAPI():
             package["versions"],
             key=lambda version: StrictVersion(version["version_number"])
         )
-        return ordered[0]
+        return ordered[-1]
 
     def is_bepis_package(self, entry):
         latest = self.get_latest_version(entry)
