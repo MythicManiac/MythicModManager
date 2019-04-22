@@ -1,7 +1,7 @@
 {
     "name": "MythicModManager",
-    "version_number": "1.0.0",
+    "version_number": "1.0.1",
     "website_url": "https://github.com/MythicManiac/MythicModManager",
-    "description": "Download, Install, Enable, and Disable mods automatically.",
+    "description": "Download, Install, Enable, and Disable mods automatically. Includes BepInEx",
     "dependencies": []
 }

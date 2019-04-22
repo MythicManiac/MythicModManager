@@ -33,10 +33,14 @@ _NOTE: If you have a non-standard Risk of Rain 2 install location, modify
 _NOTE: MythicModManager best works with a clean Risk of Rain installation, which
 includes removing all existing mods._
 
+_NOTE: The game has to be relaunched every time new mods are installed or
+uninstalled._
+
 ## FAQ
 
 - Why does it look like garbage?
     - Because it is garbage. Please make a better one
+
 
 - How long did it take to make this?
     - Roughly 4 hours
