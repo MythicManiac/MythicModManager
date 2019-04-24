@@ -22,7 +22,7 @@ class ThunderstoreAPI():
         self.packages, self.bepinex = self.build_package_index()
 
     def build_package_index(self):
-        all_packages = sorted(requests.get(self.API_URL).json(), key=lambda i: i["full_name"].lower())
+        all_packages = sorted(requests.get(self.API_URL).json(), key=lambda i: "-".join(reversed(i["full_name"].lower().split("-"))))
         packages_by_full_name = {
             entry["full_name"]: entry
             for entry in all_packages
