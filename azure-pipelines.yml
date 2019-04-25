@@ -25,7 +25,6 @@ steps:
   displayName: 'Install dependencies'
 
 - script: |
-    pip install pytest-azurepipelines
     pytest
   displayName: 'pytest'
 
@@ -34,3 +33,7 @@ steps:
     pip install black
     black --check manager
   displayName: 'black'
+
+- script: |
+    mypy manager
+  displayName: mypy
