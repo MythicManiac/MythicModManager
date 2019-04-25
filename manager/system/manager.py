@@ -6,11 +6,9 @@ import shutil
 from pathlib import Path
 
 from zipfile import ZipFile
-from utils.install_finder import find_steam_location
 
 
-class ModManager():
-
+class ModManager:
     def __init__(self, api, mod_cache_path, risk_of_rain_path):
         self.api = api
         self.mod_cache_path = Path(mod_cache_path)
@@ -22,13 +20,14 @@ class ModManager():
 
     def download_mod(self, owner, name, version):
         full_name = self.get_package_full_name(owner, name, version)
-        download_url = f"https://thunderstore.io/package/download/{owner}/{name}/{version}/"
+        download_url = (
+            f"https://thunderstore.io/package/download/{owner}/{name}/{version}/"
+        )
         print(f"Downloading {full_name}")
 
         with requests.get(download_url, stream=True) as r:
             r.raise_for_status()
-            with open(self.mod_cache_path.resolve() /
-                      f"{full_name}.zip", "wb") as f:
+            with open(self.mod_cache_path.resolve() / f"{full_name}.zip", "wb") as f:
                 for chunk in (x for x in r.iter_content(chunk_size=8192) if x):
                     f.write(chunk)
 
@@ -53,17 +52,16 @@ class ModManager():
         return f"{owner}-{name}{f'-{version}' if version else ''}"
 
     def get_downloaded_packages(self):
-        return [x.stem for x in self.mod_cache_path.glob('*.zip')]
+        return [x.stem for x in self.mod_cache_path.glob("*.zip")]
 
     def get_installed_packages(self):
-        return [(x.name[4:-6], x.name[-5:])
-                for x in self.mod_install_path.glob('mmm-*')]
+        return [
+            (x.name[4:-6], x.name[-5:]) for x in self.mod_install_path.glob("mmm-*")
+        ]
 
     def export_json(self):
         installed_packages = self.get_installed_packages()
-        installed_full_versions = [
-            f"{e[0]}-{e[1]}" for e in installed_packages
-        ]
+        installed_full_versions = [f"{e[0]}-{e[1]}" for e in installed_packages]
         return json.dumps(installed_full_versions)
 
     def uninstall_package(self, name, version=None):
@@ -94,7 +92,7 @@ class ModManager():
                 if not entry.startswith(prefix) or not os.path.basename(entry):
                     continue
 
-                file_target = self.risk_of_rain_path / entry[len(prefix):]
+                file_target = self.risk_of_rain_path / entry[len(prefix) :]
                 if not file_target.parent.exists():
                     file_target.parent.mkdir(parents=True, exist_ok=True)
 
@@ -137,12 +135,3 @@ class ModManager():
                     self.uninstall_package(installed_package, installed_version)
 
         self.install_bepinmod_package(version_full_name)
-
-
-def main():
-    application = Application()
-    application.launch()
-
-
-if __name__ == "__main__":
-    main()

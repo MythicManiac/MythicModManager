@@ -1,7 +1,7 @@
-import json
 import toml
 import winreg
 from pathlib import Path
+
 
 def read_install_config():
     try:
@@ -9,15 +9,16 @@ def read_install_config():
         if config_path.is_file():
             dict = toml.load(config_path)
         else:
-            dict =  {'Steam_path': ''}
-            with open(config_path, 'w') as file:
+            dict = {"Steam_path": ""}
+            with open(config_path, "w") as file:
                 toml.dump(dict, file)
-        return dict['Steam_path']
+        return dict["Steam_path"]
     except Exception:
         raise ValueError("Config file is corrupt. Please repair or remove the file")
 
+
 def find_steam_location():
-    aReg = winreg.ConnectRegistry(None,winreg.HKEY_CURRENT_USER)
+    aReg = winreg.ConnectRegistry(None, winreg.HKEY_CURRENT_USER)
     aKey = winreg.OpenKey(aReg, r"Software\Valve\Steam")
 
     path = Path(winreg.QueryValueEx(aKey, "SteamPath")[0])
@@ -26,8 +27,10 @@ def find_steam_location():
 
     return path / "steamapps/common/Risk of Rain 2/"
 
+
 def verify_steam_location(location):
     return (location / "Risk of Rain 2.exe").is_file()
+
 
 def get_install_path():
     path = Path(read_install_config())
@@ -38,7 +41,10 @@ def get_install_path():
         if verify_steam_location(path):
             return path
     except Exception:
-        raise FileNotFoundError("Could not find your Steam folder. Please set path manually")
+        raise FileNotFoundError(
+            "Could not find your Steam folder. Please set path manually"
+        )
+
 
 get_install_path()
 # Todo: fix for custom steam installations

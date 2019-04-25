@@ -2,7 +2,8 @@ import requests
 
 from distutils.version import StrictVersion
 
-class ThunderstoreAPI():
+
+class ThunderstoreAPI:
     API_URL = "https://thunderstore.io/api/v1/package/"
 
     def __init__(self):
@@ -12,11 +13,11 @@ class ThunderstoreAPI():
         self.packages, self.bepinex = self.build_package_index()
 
     def build_package_index(self):
-        all_packages = sorted(requests.get(self.API_URL).json(), key=lambda i: "-".join(reversed(i["full_name"].lower().split("-"))))
-        packages_by_full_name = {
-            entry["full_name"]: entry
-            for entry in all_packages
-        }
+        all_packages = sorted(
+            requests.get(self.API_URL).json(),
+            key=lambda i: "-".join(reversed(i["full_name"].lower().split("-"))),
+        )
+        packages_by_full_name = {entry["full_name"]: entry for entry in all_packages}
         bepinex = packages_by_full_name["bbepis-BepInExPack"]
         bepinex_packages = {
             entry["full_name"]: entry
@@ -28,7 +29,7 @@ class ThunderstoreAPI():
     def get_latest_version(self, package):
         ordered = sorted(
             package["versions"],
-            key=lambda version: StrictVersion(version["version_number"])
+            key=lambda version: StrictVersion(version["version_number"]),
         )
         return ordered[-1]
 

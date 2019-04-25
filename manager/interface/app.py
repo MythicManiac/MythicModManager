@@ -5,8 +5,7 @@ from system.manager import ModManager
 from utils.install_finder import get_install_path
 
 
-class Application():
-
+class Application:
     def __init__(self):
         self.api = ThunderstoreAPI()
         self.mod_manager = ModManager(
@@ -24,10 +23,14 @@ class Application():
 
     def build_window(self):
         self.selection_title = sg.Text(f"", font=("Helvetica", 20), size=(30, 1))
-        self.selection_description = sg.Multiline(f"", font=("Helvetica", 10), size=(60, 5))
+        self.selection_description = sg.Multiline(
+            f"", font=("Helvetica", 10), size=(60, 5)
+        )
         self.selection_author = sg.Text(f"", font=("Helvetica", 12), size=(26, 1))
         self.selection_version = sg.Text(f"", font=("Helvetica", 12), size=(26, 1))
-        self.slection_total_downloads = sg.Text(f"", font=("Helvetica", 12), size=(26, 1))
+        self.slection_total_downloads = sg.Text(
+            f"", font=("Helvetica", 12), size=(26, 1)
+        )
         self.selection_url = None
 
         self.available_packages_list = sg.Listbox(
@@ -36,9 +39,7 @@ class Application():
             select_mode=sg.LISTBOX_SELECT_MODE_EXTENDED,
         )
         self.installed_packages_list = sg.Listbox(
-            values=[],
-            size=(38, 16),
-            select_mode=sg.LISTBOX_SELECT_MODE_EXTENDED,
+            values=[], size=(38, 16), select_mode=sg.LISTBOX_SELECT_MODE_EXTENDED
         )
         self.progress_bar = sg.ProgressBar(
             max_value=1000,
@@ -51,64 +52,73 @@ class Application():
             relief=None,
             key="progress",
             pad=None,
-            visible=True
+            visible=True,
         )
 
         self.layout = [
             [
                 sg.Text(
                     (
-                        "Find the source from https://github.com/MythicManiac/MythicModManager " +
-                        "and please make a better tool than this abomination"
+                        "Find the source from https://github.com/MythicManiac/MythicModManager "
+                        + "and please make a better tool than this abomination"
                     ),
                     font=("Helvetica", 14),
                 )
             ],
             [
-                sg.Button("Update BepInEx"), sg.Button("Refresh list"), sg.Button("Export"), sg.Button("Import"),
+                sg.Button("Update BepInEx"),
+                sg.Button("Refresh list"),
+                sg.Button("Export"),
+                sg.Button("Import"),
             ],
             [
-                sg.Column([
-                    [sg.Text("Available mods", font=("Helvetica", 14))],
-                    [self.available_packages_list],
-                    [sg.Button("Install")],
-                ]),
-                sg.Column([
-                    [sg.Text("Installed mods", font=("Helvetica", 14))],
-                    [self.installed_packages_list],
-                    [sg.Button("Uninstall")],
-                ]),
-                sg.Column([
-                    [self.selection_title],
-                    [self.selection_description],
-                    [self.selection_author],
-                    [self.selection_version],
-                    [self.slection_total_downloads],
-                    [sg.RealtimeButton("View on Thunderstore")],
-                ]),
+                sg.Column(
+                    [
+                        [sg.Text("Available mods", font=("Helvetica", 14))],
+                        [self.available_packages_list],
+                        [sg.Button("Install")],
+                    ]
+                ),
+                sg.Column(
+                    [
+                        [sg.Text("Installed mods", font=("Helvetica", 14))],
+                        [self.installed_packages_list],
+                        [sg.Button("Uninstall")],
+                    ]
+                ),
+                sg.Column(
+                    [
+                        [self.selection_title],
+                        [self.selection_description],
+                        [self.selection_author],
+                        [self.selection_version],
+                        [self.slection_total_downloads],
+                        [sg.RealtimeButton("View on Thunderstore")],
+                    ]
+                ),
             ],
             [self.progress_bar],
         ]
 
         if not self.mod_manager.risk_of_rain_path.exists():
             self.can_run = False
-            sg.Popup((
-                "Could not find your risk of rain installation path. " +
-                "Please add it in the config.json file"
-            ))
-        else:
-            self.window = (
-                sg.Window("Mythic Mod Manager")
-                .Layout(self.layout)
-                .Finalize()
+            sg.Popup(
+                (
+                    "Could not find your risk of rain installation path. "
+                    + "Please add it in the config.json file"
+                )
             )
+        else:
+            self.window = sg.Window("Mythic Mod Manager").Layout(self.layout).Finalize()
             self.can_run = True
 
             if not self.mod_manager.verify_bepinex():
-                sg.Popup((
-                    "It seems you don't have BepInex installed. " +
-                    "Please install it by clicking the 'Update BepInEx' button"
-                ))
+                sg.Popup(
+                    (
+                        "It seems you don't have BepInex installed. "
+                        + "Please install it by clicking the 'Update BepInEx' button"
+                    )
+                )
 
     def refresh_installed_mods(self):
         installed_packages = self.mod_manager.get_installed_packages()
@@ -126,7 +136,9 @@ class Application():
     def update_selection(self, selection):
         entry = self.api.packages[selection]
         version = self.api.get_latest_version(entry)
-        total_downloads = sum([int(version["downloads"]) for version in entry["versions"]])
+        total_downloads = sum(
+            [int(version["downloads"]) for version in entry["versions"]]
+        )
         self.last_selection = entry
         self.last_selection_latest_version = version
         self.selection_title.Update(version["name"].replace("_", " "))
@@ -246,7 +258,9 @@ class Application():
         for index, entry in enumerate(mods_to_install):
             mod_info = self.mod_manager.split_full_version_name(entry)
             self.mod_manager.download_and_install(*mod_info)
-            self.progress_bar.UpdateBar(float(index) / len(mods_to_install) * 1000, 1000)
+            self.progress_bar.UpdateBar(
+                float(index) / len(mods_to_install) * 1000, 1000
+            )
         self.progress_bar.UpdateBar(1000, 1000)
 
     def launch(self):

@@ -1,5 +1,6 @@
 from interface.app import Application
 
+
 def main():
     application = Application()
     application.launch()
