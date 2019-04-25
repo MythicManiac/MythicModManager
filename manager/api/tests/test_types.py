@@ -11,6 +11,7 @@ from ..types import PackageReference
         ["some-user-that-has-dashes-SomePackage-1.0.6", False],
         ["some-user-that-has-dashes-SomePackage-1.2.23.2.23.0.6", True],
         ["someUser-SomePackage-1.2.3.2", True],
+        ["someUser-1.2.3", True],
         ["someUser-", True],
         ["asd", True],
         ["some-user-with-dashers-SomePackage", False],
@@ -28,6 +29,11 @@ def test_type_parsing(reference_string, should_raise):
     else:
         parsed = str(PackageReference.parse(reference_string))
         assert parsed == reference_string
+
+
+def test_equals_another_type():
+    A = PackageReference.parse("SomeAuthor-SomePackage-1.0.0")
+    assert (A == 49) is False
 
 
 @pytest.mark.parametrize(
