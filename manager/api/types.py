@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import re
 from distutils.version import StrictVersion
 
 
 class PackageReference:
-    VERSION_PATTERN = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
-
     def __init__(self, namespace, name, version=None):
         """
         :param str namespace: The namespace of the referenced package
@@ -20,7 +17,8 @@ class PackageReference:
 
     def __str__(self):
         if self.version:
-            return f"{self.namespace}-{self.name}-{self.version}"
+            version = ".".join(str(x) for x in self.version.version)
+            return f"{self.namespace}-{self.name}-{version}"
         else:
             return f"{self.namespace}-{self.name}"
 
@@ -46,7 +44,12 @@ class PackageReference:
         :rtype: bool
         :raises ValueError: If the other object is not a PackageReference
         """
-        return self.is_same_package(other) and self.version == other.version
+        if not self.is_same_package(other):
+            return False
+        try:
+            return self.version == other.version
+        except AttributeError:
+            return False
 
     def __eq__(self, other):
         if isinstance(other, PackageReference):
@@ -69,13 +72,15 @@ class PackageReference:
         :raises ValueError: If the reference string is in an invalid format
         """
 
-        version_string = reference_string[-5:]
+        version_string = reference_string.split("-")[-1]
         version = None
-        if re.match(self.VERSION_PATTERN, version_string):
-            if reference_string.split("-")[-1] != version_string:
+        if version_string.count(".") > 0:
+            if reference_string.count(".") != 2:
+                raise ValueError("Invalid package reference string")
+            if reference_string.count("-") < 2:
                 raise ValueError("Invalid package reference string")
             version = StrictVersion(version_string)
-            reference_string = reference_string[:-6]
+            reference_string = reference_string[: -(len(version_string) + 1)]
 
         name = reference_string.split("-")[-1]
         namespace = "-".join(reference_string.split("-")[:-1])
