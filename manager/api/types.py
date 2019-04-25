@@ -15,7 +15,7 @@ class PackageReference:
         self.name = name
         self.version = version
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.version:
             version = ".".join(str(x) for x in self.version.version)
             return f"{self.namespace}-{self.name}-{version}"
@@ -55,6 +55,9 @@ class PackageReference:
         if isinstance(other, PackageReference):
             return self.is_same_version(other)
         return False
+
+    def __hash__(self):
+        return hash(str(self))
 
     @classmethod
     def parse(self, reference_string) -> PackageReference:
