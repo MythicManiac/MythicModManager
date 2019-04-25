@@ -2,10 +2,10 @@ from .models import Package
 from .types import PackageReference
 
 
-class PackageIndex:
+class Packages:
     """ Container for storing an index of packages """
 
-    def __init__(self, data):
+    def __init__(self):
         self.packages = {}
 
     def __len__(self):
@@ -47,3 +47,9 @@ class PackageIndex:
         for entry in data:
             package = Package(data)
             self.packages[package.full_name] = package
+
+    @classmethod
+    def with_data(cls, data):
+        packages = Packages()
+        packages.update(data)
+        return packages

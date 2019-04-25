@@ -60,7 +60,7 @@ class PackageReference:
         return hash(str(self))
 
     @classmethod
-    def parse(self, reference_string) -> PackageReference:
+    def parse(cls, reference_string) -> PackageReference:
         """
         - Packages references are in format {namespace}-{name}-{version}
         - Namespace may contain dashes, whereas name and version can not
