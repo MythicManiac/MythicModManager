@@ -25,6 +25,7 @@ steps:
   displayName: 'Install dependencies'
 
 - script: |
+    python -m pip install pytest-azurepipelines
     pytest
   displayName: 'pytest'
 
