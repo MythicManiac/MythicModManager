@@ -46,7 +46,6 @@ def get_install_path():
         )
 
 
-get_install_path()
 # Todo: fix for custom steam installations
 # # def extract config
 #
