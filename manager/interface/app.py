@@ -2,7 +2,7 @@ import PySimpleGUI as sg
 
 from api.thunderstore import ThunderstoreAPI
 from system.manager import ModManager
-from utils.install_finder import find_steam_location
+from utils.install_finder import get_install_path
 
 
 class Application():
@@ -12,7 +12,7 @@ class Application():
         self.mod_manager = ModManager(
             api=self.api,
             mod_cache_path="mod-cache/",
-            risk_of_rain_path=find_steam_location(),
+            risk_of_rain_path=get_install_path(),
         )
         self.build_window()
         if self.can_run:

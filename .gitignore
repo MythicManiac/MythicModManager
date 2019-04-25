@@ -1,5 +1,5 @@
 # Custom
-
+*.toml
 manager/mod-cache
 
 # Byte-compiled / optimized / DLL files
