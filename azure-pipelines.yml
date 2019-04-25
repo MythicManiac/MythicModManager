@@ -12,8 +12,6 @@ strategy:
   matrix:
     Python36:
       python.version: '3.6'
-    Python37:
-      python.version: '3.7'
 
 steps:
 - task: UsePythonVersion@0
@@ -30,3 +28,9 @@ steps:
     pip install pytest pytest-azurepipelines
     pytest
   displayName: 'pytest'
+
+
+- script: |
+    pip install black
+    black --check manager
+  displayName: 'black'
