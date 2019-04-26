@@ -1,3 +1,5 @@
+import json
+import webbrowser
 import PySimpleGUI as sg
 
 from ..system.manager import ModManager

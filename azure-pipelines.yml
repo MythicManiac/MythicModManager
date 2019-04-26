@@ -29,12 +29,14 @@ steps:
     pytest
   displayName: 'pytest'
 
-
 - script: |
-    pip install black
-    black --check manager
+    black --check .
   displayName: 'black'
 
 - script: |
-    mypy manager
+    flake8 .
+  displayName: 'flake8'
+
+- script: |
+    mypy .
   displayName: mypy

@@ -4,3 +4,21 @@ repos:
     hooks:
     - id: black
       language_version: python3.6
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.2.1
+    hooks:
+    - id: flake8
+-   repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: pytest
+        pass_filenames: false
+        language: system
+        types: [python]
+      - id: mypy
+        name: mypy
+        entry: mypy .
+        pass_filenames: false
+        language: system
+        types: [python]
