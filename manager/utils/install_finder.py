@@ -1,5 +1,4 @@
 import toml
-import winreg
 from pathlib import Path
 
 
@@ -17,7 +16,12 @@ def read_install_config():
         raise ValueError("Config file is corrupt. Please repair or remove the file")
 
 
-def find_steam_location():
+def find_windows_install_path():
+    try:
+        import winreg
+    except ImportError:
+        return None
+
     aReg = winreg.ConnectRegistry(None, winreg.HKEY_CURRENT_USER)
     aKey = winreg.OpenKey(aReg, r"Software\Valve\Steam")
 
@@ -26,6 +30,10 @@ def find_steam_location():
     winreg.CloseKey(aKey)
 
     return path / "steamapps/common/Risk of Rain 2/"
+
+
+def find_steam_location():
+    return find_windows_install_path()
 
 
 def verify_steam_location(location):
