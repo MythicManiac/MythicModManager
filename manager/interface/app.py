@@ -1,8 +1,8 @@
 import PySimpleGUI as sg
 
-from api.thunderstore import ThunderstoreAPI
-from system.manager import ModManager
-from utils.install_finder import get_install_path
+from ..system.manager import ModManager
+from ..api.thunderstore import ThunderstoreAPI
+from ..utils.install_finder import get_install_path
 
 
 class Application:

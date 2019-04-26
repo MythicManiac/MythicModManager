@@ -1,4 +1,4 @@
-from interface.app import Application
+from manager.interface.app import Application
 
 
 def main():
