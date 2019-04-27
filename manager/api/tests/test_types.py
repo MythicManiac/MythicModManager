@@ -85,3 +85,18 @@ def test_is_same_package(A_str, B_str, assertion):
     assert A.is_same_package(B) == assertion
     assert str(A) == A_str
     assert str(B) == B_str
+
+
+@pytest.mark.parametrize(
+    "inp, out",
+    [
+        ["someUser-SomePackage", "someUser-SomePackage"],
+        ["someUser-SomePackage-1.3.2", "someUser-SomePackage"],
+        ["someUser-SomePackage-345.231.42", "someUser-SomePackage"],
+        ["Ads-Dsa-121.321.31", "Ads-Dsa"],
+    ],
+)
+def test_without_version(inp, out):
+    inp = PackageReference.parse(inp)
+    out = PackageReference.parse(out)
+    assert inp.without_version == out
