@@ -1,9 +1,6 @@
 import wx
 import wx.grid
-import sys
-from pathlib import Path
-import inspect
-import threading
+
 
 class TabOne(wx.Panel):
     def __init__(self, parent):
@@ -36,18 +33,17 @@ class TabOne(wx.Panel):
         ####################################################################
         # Instantiate element winddows
 
-        self.i_listA = wx.ListBox(choices=[], name='listA',
-                                  parent=self, style=0)
+        self.i_listA = wx.ListBox(choices=[], name="listA", parent=self, style=0)
         self.i_listA.Bind(wx.EVT_LISTBOX, self.onSingleSelect)
         self.i_listA.Bind(wx.EVT_LISTBOX_DCLICK, self.OnDoubleCLick)
 
-        self.i_listB = wx.ListBox(choices=[], name='listB',
-                                  parent=self, style=0)
+        self.i_listB = wx.ListBox(choices=[], name="listB", parent=self, style=0)
         self.i_listB.Bind(wx.EVT_LISTBOX, self.onSingleSelect)
         self.i_listB.Bind(wx.EVT_LISTBOX_DCLICK, self.OnDoubleCLick)
 
-        self.unknown_bmp = wx.Bitmap(wx.Image("unknown.png").Scale(180, 180),
-                                     wx.IMAGE_QUALITY_HIGH)
+        self.unknown_bmp = wx.Bitmap(
+            wx.Image("unknown.png").Scale(180, 180), wx.IMAGE_QUALITY_HIGH
+        )
         self.i_portrait = wx.StaticBitmap(self, bitmap=self.unknown_bmp)
         self.i_infoscreen = wx.TextCtrl(self, value="Mod info")
 
@@ -126,22 +122,26 @@ class TabOne(wx.Panel):
         btn = event.GetEventObject().GetLabel()
 
         if btn == ">":
-            msg = wx.MessageDialog(self,">", "Button", wx.OK | wx.ICON_INFORMATION)
+            msg = wx.MessageDialog(self, ">", "Button", wx.OK | wx.ICON_INFORMATION)
             msg.ShowModal()
             msg.Destroy()
 
         elif btn == "<":
-            msg = wx.MessageDialog(self,"<", "Button", wx.OK | wx.ICON_INFORMATION)
+            msg = wx.MessageDialog(self, "<", "Button", wx.OK | wx.ICON_INFORMATION)
             msg.ShowModal()
             msg.Destroy()
 
         elif btn == "Refresh":
-            msg = wx.MessageDialog(self,"Refresh", "Button", wx.OK | wx.ICON_INFORMATION)
+            msg = wx.MessageDialog(
+                self, "Refresh", "Button", wx.OK | wx.ICON_INFORMATION
+            )
             msg.ShowModal()
             msg.Destroy()
 
         elif btn == "Update Bepis":
-            msg = wx.MessageDialog(self,"Update Bepis", "Button", wx.OK | wx.ICON_INFORMATION)
+            msg = wx.MessageDialog(
+                self, "Update Bepis", "Button", wx.OK | wx.ICON_INFORMATION
+            )
             msg.ShowModal()
             msg.Destroy()
 
@@ -182,11 +182,12 @@ class TabTwo(wx.Panel):
 
     def OnSize(self, event):
         width, height = self.GetClientSize()
-        colwidth = (width-100)/20
-        self.grid.SetColSize(0, colwidth*4)
-        self.grid.SetColSize(1, colwidth*10)
-        self.grid.SetColSize(2, colwidth*3)
-        self.grid.SetColSize(3, colwidth*3)
+        colwidth = (width - 100) / 20
+        self.grid.SetColSize(0, colwidth * 4)
+        self.grid.SetColSize(1, colwidth * 10)
+        self.grid.SetColSize(2, colwidth * 3)
+        self.grid.SetColSize(3, colwidth * 3)
+
 
 class GridFrame(wx.Frame):
     def __init__(self, parent):
@@ -205,7 +206,8 @@ class GridFrame(wx.Frame):
         self.Layout()
         self.Show()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     app = wx.App(0)
     frame = GridFrame(None)
