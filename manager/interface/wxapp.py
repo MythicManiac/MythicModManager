@@ -9,78 +9,101 @@ import threading
 class GridFrame(wx.Frame):
     def __init__(self, parent):
 
-        # This code still needs cleaning and isn't finished yet
+        ####################################################################
+        #                     ###                                          #
+        #                     ###                                          #
+        #                     ###            infoscreen                    #
+        #      portrait       ###                                          #
+        #                     ###                                          #
+        #                     ##############################################
+        #                     ###      update      ###           view      #
+        ####################################################################
+        # refresh   #    bepis     #   parse   #    export    #    import  #
+        ####################################################################
+        #                             ########                             #
+        #                             ########                             #
+        #                             ########                             #
+        #                             ##right#                             #
+        #           listA             ##left##           listB             #
+        #                             ########                             #
+        #                             ########                             #
+        #                             ########                             #
+        #                             ########                             #
+        ####################################################################
 
-        # wx.Frame.__init__(self, parent, style=wx.DEFAULT_FRAME_STYLE ^ wx.RESIZE_BORDER)
+        ####################################################################
+        # Instantiate frame
         wx.Frame.__init__(self, parent, style=wx.DEFAULT_FRAME_STYLE)
         self.SetSize(wx.DLG_UNIT(self, wx.Size(300, 260)))
 
-        self.itemset = set([])
-        self.cellection = []
+        ####################################################################
+        # Instantiate element winddows
 
-        listA = wx.ListBox(choices=[], name='LeftList', parent=self, style=0)
+        self.i_listA = wx.ListBox(choices=[], name='listA',
+                                  parent=self, style=0)
+        self.i_listA.Bind(wx.EVT_LISTBOX, self.onSingleSelect)
+        self.i_listA.Bind(wx.EVT_LISTBOX_DCLICK, self.OnDoubleCLick)
 
-        listB = wx.ListBox(choices=[], name='RightList', parent=self, style=0)
+        self.i_listB = wx.ListBox(choices=[], name='listB',
+                                  parent=self, style=0)
+        self.i_listB.Bind(wx.EVT_LISTBOX, self.onSingleSelect)
+        self.i_listB.Bind(wx.EVT_LISTBOX_DCLICK, self.OnDoubleCLick)
 
-        sizer_0 = wx.BoxSizer(wx.VERTICAL)
-        sizer_1 = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_2 = wx.BoxSizer(wx.VERTICAL)
+        self.unknown_bmp = wx.Bitmap(wx.Image("unknown.png").Scale(180, 180),
+                                     wx.IMAGE_QUALITY_HIGH)
+        self.i_portrait = wx.StaticBitmap(self, bitmap=self.unknown_bmp)
+        self.i_infoscreen = wx.TextCtrl(self, value="Mod info")
 
-        sizer_bar = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_buttons = wx.BoxSizer(wx.HORIZONTAL)
+        self.i_refresh = wx.Button(self, wx.ID_ANY, "Refresh")
+        self.i_refresh.Bind(wx.EVT_BUTTON, self.OnClicked)
+        self.i_bepis = wx.Button(self, wx.ID_ANY, "Update Bepis")
+        self.i_bepis.Bind(wx.EVT_BUTTON, self.OnClicked)
+        self.i_parse = wx.Button(self, wx.ID_ANY, "Parse Download")
+        self.i_parse.Bind(wx.EVT_BUTTON, self.OnClicked)
+        self.i_export = wx.Button(self, wx.ID_ANY, "Export")
+        self.i_export.Bind(wx.EVT_BUTTON, self.OnClicked)
+        self.i_import = wx.Button(self, wx.ID_ANY, "Import")
+        self.i_import.Bind(wx.EVT_BUTTON, self.OnClicked)
 
-        sizer_0.Add(sizer_bar, 1, wx.EXPAND)
-        sizer_0.Add(sizer_buttons, 0, wx.EXPAND)
-        sizer_0.Add(sizer_1, 3, wx.EXPAND)
+        self.i_left = wx.Button(self, wx.ID_ANY, "<", size=(50, 30))
+        self.i_left.Bind(wx.EVT_BUTTON, self.OnClicked)
 
-        sizer_1.Add(listA, 1, wx.EXPAND)
-        sizer_1.Add(sizer_2, 0, wx.CENTER)
-        sizer_1.Add(listB, 1, wx.EXPAND)
+        self.i_right = wx.Button(self, wx.ID_ANY, ">", size=(50, 30))
+        self.i_right.Bind(wx.EVT_BUTTON, self.OnClicked)
 
-        image = wx.Image("icon.png").Scale(180, 180)
-        print(image)
-        self.bmp = wx.StaticBitmap(self, bitmap=wx.Bitmap(image, wx.IMAGE_QUALITY_HIGH))
+        ####################################################################
+        # Instantiate sizers
 
-        infoscreen = wx.TextCtrl(self, value="Mod info")
+        is_A = wx.BoxSizer(wx.VERTICAL)  # Main vertical sizer
+        is_B = wx.BoxSizer(wx.HORIZONTAL)  # Top horizontal sizer
+        is_C = wx.BoxSizer(wx.HORIZONTAL)  # Button row horiz. sizer
+        is_D = wx.BoxSizer(wx.HORIZONTAL)  # Bottom horizontal sizer
+        is_E = wx.BoxSizer(wx.VERTICAL)  # Buttons between lists vert. sizer
 
-        sizer_bar.Add(self.bmp, 1, wx.CENTER)
-        sizer_bar.Add(infoscreen, 2, wx.EXPAND)
+        is_A.Add(is_B, 1, wx.EXPAND)
+        is_A.Add(is_C, 0, wx.EXPAND)
+        is_A.Add(is_D, 3, wx.EXPAND)
 
-        button_bepis = wx.Button(self, wx.ID_ANY, "Update Bepis")
-        button_bepis.Bind(wx.EVT_BUTTON, self.OnClicked)
-        button_refresh = wx.Button(self, wx.ID_ANY, "Refresh")
-        button_refresh.Bind(wx.EVT_BUTTON, self.OnClicked)
-        button_view = wx.Button(self, wx.ID_ANY, "View on Thunderstore")
-        button_view.Bind(wx.EVT_BUTTON, self.OnClicked)
-        button_export = wx.Button(self, wx.ID_ANY, "Export")
-        button_export.Bind(wx.EVT_BUTTON, self.OnClicked)
-        button_import = wx.Button(self, wx.ID_ANY, "Import")
-        button_import.Bind(wx.EVT_BUTTON, self.OnClicked)
+        is_B.Add(self.i_portrait, 1, wx.CENTER)
+        is_B.Add(self.i_infoscreen, 2, wx.EXPAND)
 
-        sizer_buttons.Add(button_bepis, 11, wx.EXPAND)
-        sizer_buttons.Add(button_refresh, 7, wx.EXPAND)
-        sizer_buttons.Add(button_view, 15, wx.EXPAND)
-        sizer_buttons.Add(button_export, 6, wx.EXPAND)
-        sizer_buttons.Add(button_import, 6, wx.EXPAND)
+        is_C.Add(self.i_refresh, 7, wx.EXPAND)
+        is_C.Add(self.i_bepis, 11, wx.EXPAND)
+        is_C.Add(self.i_parse, 15, wx.EXPAND)
+        is_C.Add(self.i_export, 6, wx.EXPAND)
+        is_C.Add(self.i_import, 6, wx.EXPAND)
 
-        button_left = wx.Button(self, wx.ID_ANY, "<", size=(50,30))
-        button_left.Bind(wx.EVT_BUTTON, self.OnClicked)
+        is_D.Add(self.i_listA, 1, wx.EXPAND)
+        is_D.Add(is_E, 0, wx.CENTER)
+        is_D.Add(self.i_listB, 1, wx.EXPAND)
 
-        button_right = wx.Button(self, wx.ID_ANY, ">", size=(50,30))
-        button_right.Bind(wx.EVT_BUTTON, self.OnClicked)
+        is_E.Add(self.i_right, 0, wx.CENTER)
+        is_E.Add(self.i_left, 0, wx.CENTER)
 
-        listA.Bind(wx.EVT_LISTBOX, self.onSingleSelect)
-        listB.Bind(wx.EVT_LISTBOX, self.onSingleSelect)
+        ####################################################################
+        # Show
 
-        listA.Bind(wx.EVT_LISTBOX_DCLICK, self.OnDoubleCLick)
-        listB.Bind(wx.EVT_LISTBOX_DCLICK, self.OnDoubleCLick)
-
-        sizer_2.Add(button_right, 0, wx.CENTER)
-        sizer_2.Add(button_left, 0, wx.CENTER)
-
-        self.leftlist = listA
-        self.rightlist = listB
-        self.SetSizer(sizer_0)
+        self.SetSizer(is_A)
         self.Layout()
         self.Show()
 
@@ -104,10 +127,10 @@ class GridFrame(wx.Frame):
         """
         object = event.GetEventObject()
 
-        if object == self.leftlist:
-            self.rightlist.SetSelection(-1)
-        elif object == self.rightlist:
-            self.leftlist.SetSelection(-1)
+        if object == self.i_listB:
+            self.i_listA.SetSelection(-1)
+        elif object == self.i_listA:
+            self.i_listB.SetSelection(-1)
         print("Singleclick!")
         print(event)
         event.Skip()
