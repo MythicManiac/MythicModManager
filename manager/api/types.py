@@ -34,11 +34,13 @@ class PackageReference:
         Check if another package reference belongs to the same package as this
         one
 
-        :param PackageReference other: The package to check against
+        :param other: The package to check against
+        :type other: PackageReference or str
         :return: True if matching, False otherwise
         :rtype: bool
-        :raises ValueError: If the other object is not a PackageReference
         """
+        if isinstance(other, str):
+            other = PackageReference.parse(other)
         return self.namespace == other.namespace and self.name == other.name
 
     def is_same_version(self, other) -> bool:
@@ -46,11 +48,13 @@ class PackageReference:
         Check if another package reference is of the same package and version as
         this one
 
-        :param PackageReference other: The package to check against
+        :param other: The package to check against
+        :type other: PackageReference or str
         :return: True if matching, False otherwise
         :rtype: bool
-        :raises ValueError: If the other object is not a PackageReference
         """
+        if isinstance(other, str):
+            other = PackageReference.parse(other)
         if not self.is_same_package(other):
             return False
         try:

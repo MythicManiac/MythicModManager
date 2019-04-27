@@ -2,7 +2,6 @@ import json
 
 import dateutil.parser
 from distutils.version import StrictVersion
-from urllib.parse import urlparse
 from uuid import UUID
 
 from ..models import Package, PackageVersion
@@ -61,7 +60,7 @@ def test_package_model():
     assert package.name == "MythicModManager"
     assert package.full_name == PackageReference.parse("MythicManiac-MythicModManager")
     assert package.owner == "MythicManiac"
-    assert package.package_url == urlparse(
+    assert package.package_url == (
         "https://thunderstore.io/package/MythicManiac/MythicModManager/"
     )
     assert package.maintainers == []
@@ -92,14 +91,14 @@ def test_package_model():
         version.description
         == "Download, Install, Enable, and Disable mods automatically. Includes BepInEx"
     )
-    assert version.icon == urlparse(
+    assert version.icon == (
         "https://storage.googleapis.com/thunderstore/live/MythicManiac-MythicModManager-1.0.1.png"
     )
     assert version.version_number == StrictVersion("1.0.1")
     assert len(version.dependencies) == 1
     assert version.dependencies[0] == PackageReference.parse("TestUser-TestMod-0.1.0")
 
-    download_url = urlparse(
+    download_url = (
         "https://thunderstore.io/package/download/MythicManiac/MythicModManager/1.0.1/"
     )
     assert version.download_url == download_url

@@ -9,7 +9,7 @@ from ..utils.install_finder import get_install_path
 
 class Application:
     def __init__(self):
-        self.api = ThunderstoreAPI()
+        self.api = ThunderstoreAPI(api_url="https://thunderstore.io/api/v1/")
         self.mod_manager = ModManager(
             api=self.api,
             mod_cache_path="mod-cache/",
@@ -137,35 +137,34 @@ class Application:
 
     def update_selection(self, selection):
         entry = self.api.packages[selection]
-        version = self.api.get_latest_version(entry)
-        total_downloads = sum(
-            [int(version["downloads"]) for version in entry["versions"]]
-        )
+        version = entry.versions.latest
         self.last_selection = entry
         self.last_selection_latest_version = version
-        self.selection_title.Update(version["name"].replace("_", " "))
-        self.selection_description.Update(version["description"])
-        self.selection_author.Update(f"Author: {entry['owner']}")
-        self.selection_version.Update(f"Version: v{version['version_number']}")
-        self.slection_total_downloads.Update(f"Total downloads: {total_downloads}")
-        self.selection_url = entry["package_url"]
+        self.selection_title.Update(version.name.replace("_", " "))
+        self.selection_description.Update(version.description)
+        self.selection_author.Update(f"Author: {entry.owner}")
+        self.selection_version.Update(f"Version: v{version.version_number}")
+        self.slection_total_downloads.Update(
+            f"Total downloads: {entry.total_downloads}"
+        )
+        self.selection_url = entry.package_url
 
     def install_mod(self, mod_name):
         mod_entry = self.api.packages.get(mod_name, None)
         if mod_entry:
-            last_version = self.api.get_latest_version(mod_entry)
-            for dependency in last_version["dependencies"]:
-                if not dependency.startswith("bbepis-BepInExPack"):
+            last_version = mod_entry.versions.latest
+            for dependency in last_version.dependencies:
+                if not dependency.is_same_package("bbepis-BepInExPack"):
                     self.install_mod(dependency[:-6])
 
             self.mod_manager.download_and_install(
-                owner=mod_entry["owner"],
-                name=mod_entry["name"],
-                version=last_version["version_number"],
+                owner=mod_entry.owner,
+                name=mod_entry.name,
+                version=last_version.version_number,
             )
 
     def full_refresh(self):
-        self.api.update_package_index()
+        self.api.update_packages()
         self.refresh_installed_mods()
 
     def update(self, event, values):

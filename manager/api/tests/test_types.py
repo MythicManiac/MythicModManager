@@ -155,3 +155,11 @@ def test_init_version_parsing(version_number, should_raise):
 )
 def test_repr(reference, correct):
     assert repr(PackageReference.parse(reference)) == correct
+
+
+def test_string_reference_compatibility():
+    reference = PackageReference.parse("user-package-1.0.0")
+    assert reference.is_same_package("user-package")
+    assert reference.is_same_version("user-package-1.0.0")
+    assert not reference.is_same_package("user-package2")
+    assert not reference.is_same_version("user-package-1.0.1")

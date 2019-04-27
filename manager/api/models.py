@@ -5,7 +5,6 @@ import dateutil.parser
 from datetime import datetime
 from distutils.version import StrictVersion
 from typing import List
-from urllib.parse import urlparse, ParseResult
 from uuid import UUID
 
 from cached_property import cached_property
@@ -51,10 +50,10 @@ class PackageVersion(BasePackage):
         """ Description of this package version """
         return self.data["description"]
 
-    @cached_property
-    def icon(self) -> ParseResult:
+    @property
+    def icon(self) -> str:
         """ Icon URL of this package version """
-        return urlparse(self.data["icon"])
+        return self.data["icon"]
 
     @cached_property
     def version_number(self) -> StrictVersion:
@@ -66,10 +65,10 @@ class PackageVersion(BasePackage):
         """ List of other package references this package version depends on """
         return [PackageReference.parse(entry) for entry in self.data["dependencies"]]
 
-    @cached_property
-    def download_url(self) -> ParseResult:
+    @property
+    def download_url(self) -> str:
         """ Download URL of this package version """
-        return urlparse(self.data["download_url"])
+        return self.data["download_url"]
 
     @cached_property
     def downloads(self) -> int:
@@ -103,10 +102,10 @@ class Package(BasePackage):
         """ The owner of this package """
         return self.data["owner"]
 
-    @cached_property
-    def package_url(self) -> ParseResult:
+    @property
+    def package_url(self) -> str:
         """ The URL of this package's page """
-        return urlparse(self.data["package_url"])
+        return self.data["package_url"]
 
     @property
     def maintainers(self) -> List[str]:
@@ -132,3 +131,8 @@ class Package(BasePackage):
     def versions(self) -> List[PackageVersion]:
         """ List of PackageVersion objects for this package """
         return PackageVersions.with_data(self.data["versions"])
+
+    @cached_property
+    def total_downloads(self) -> int:
+        """ The total amount of times this package has been downloaded """
+        return sum(version.downloads for version in self.versions)

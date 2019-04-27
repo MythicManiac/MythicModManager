@@ -1,14 +1,21 @@
 import requests
+from urllib import parse
 
 from .containers import Packages
 
 
 class ThunderstoreAPI:
-    API_URL = "https://thunderstore.io/api/v1/package/"
+    def __init__(self, api_url):
+        self.api_url = api_url
+        self.packages = Packages()
 
-    def __init__(self):
-        self.package_index = Packages()
+    def update_packages(self):
+        url = parse.urljoin(self.api_url, "package/")
+        data = requests.get(url).json()
+        self.update_packages_with_data(data)
 
-    def update_package_index(self):
-        package_data = requests.get(self.API_URL).json()
-        self.package_index.update(package_data)
+    def update_packages_with_data(self, data):
+        self.packages.update(data)
+
+    def get_package_names(self):
+        return [str(x) for x in self.packages.keys()]

@@ -105,9 +105,9 @@ class ModManager:
         bepinex_package = self.api.bepinex
         latest = self.api.get_latest_version(bepinex_package)
 
-        owner = bepinex_package["owner"]
-        name = bepinex_package["name"]
-        version = latest["version_number"]
+        owner = bepinex_package.owner
+        name = bepinex_package.name
+        version = latest.version_number
         self.download_mod(owner, name, version)
         self.install_bepinex(self.get_package_full_name(owner, name, version))
 
