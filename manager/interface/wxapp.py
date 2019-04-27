@@ -71,6 +71,11 @@ class GridFrame(wx.Frame):
         self.i_right = wx.Button(self, wx.ID_ANY, ">", size=(50, 30))
         self.i_right.Bind(wx.EVT_BUTTON, self.OnClicked)
 
+        self.i_update = wx.Button(self, wx.ID_ANY, "Update package")
+        self.i_update.Bind(wx.EVT_BUTTON, self.OnClicked)
+        self.i_view = wx.Button(self, wx.ID_ANY, "View on Thunderstore")
+        self.i_view.Bind(wx.EVT_BUTTON, self.OnClicked)
+
         ####################################################################
         # Instantiate sizers
 
@@ -79,13 +84,16 @@ class GridFrame(wx.Frame):
         is_C = wx.BoxSizer(wx.HORIZONTAL)  # Button row horiz. sizer
         is_D = wx.BoxSizer(wx.HORIZONTAL)  # Bottom horizontal sizer
         is_E = wx.BoxSizer(wx.VERTICAL)  # Buttons between lists vert. sizer
+        is_F = wx.BoxSizer(wx.VERTICAL)  # Buttons under infoscreen v sizer
+        is_G = wx.BoxSizer(wx.HORIZONTAL)  # Buttons under infoscreen h sizer
 
         is_A.Add(is_B, 1, wx.EXPAND)
+        is_A.AddSpacer(4)
         is_A.Add(is_C, 0, wx.EXPAND)
         is_A.Add(is_D, 3, wx.EXPAND)
 
         is_B.Add(self.i_portrait, 1, wx.CENTER)
-        is_B.Add(self.i_infoscreen, 2, wx.EXPAND)
+        is_B.Add(is_F, 2, wx.EXPAND)
 
         is_C.Add(self.i_refresh, 7, wx.EXPAND)
         is_C.Add(self.i_bepis, 11, wx.EXPAND)
@@ -100,6 +108,11 @@ class GridFrame(wx.Frame):
         is_E.Add(self.i_right, 0, wx.CENTER)
         is_E.Add(self.i_left, 0, wx.CENTER)
 
+        is_F.Add(self.i_infoscreen, 2, wx.EXPAND)
+        is_F.Add(is_G, 0, wx.EXPAND)
+
+        is_G.Add(self.i_update, 14, wx.EXPAND)
+        is_G.Add(self.i_view, 20, wx.EXPAND)
         ####################################################################
         # Show
 
