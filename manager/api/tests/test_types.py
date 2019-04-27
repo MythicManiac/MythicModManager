@@ -100,3 +100,22 @@ def test_without_version(inp, out):
     inp = PackageReference.parse(inp)
     out = PackageReference.parse(out)
     assert inp.without_version == out
+
+
+@pytest.mark.parametrize(
+    "A_str, B_str, should_equal",
+    [
+        ["package-user-1.0.0", "package-user-1.0.0", True],
+        ["package-user-1.0.0", "package-user-2.0.0", False],
+        ["package-user", "package-user", True],
+        ["package-user", "package-anotheruser", False],
+        ["package-anotheruser", "package-anotheruser", True],
+        ["package-anotheruser", "package-anotheruser-493.323.4232", False],
+        ["package-anotheruser-4.3.42", "package-anotheruser-4.3.42", True],
+        ["pack-anotheruser", "pack-anotheruser", True],
+    ],
+)
+def test_hash_matching(A_str, B_str, should_equal):
+    A = PackageReference.parse(A_str)
+    B = PackageReference.parse(B_str)
+    assert (hash(A) == hash(B)) == should_equal
