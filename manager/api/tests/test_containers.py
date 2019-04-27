@@ -21,7 +21,13 @@ def create_package_data(namespace, name, version_numbers):
             name=reference.name,
             version=StrictVersion(version_number),
         )
-        versions.append({"full_name": str(version_reference), "uuid": str(uuid4())})
+        versions.append(
+            {
+                "full_name": str(version_reference),
+                "uuid": str(uuid4()),
+                "version_number": version_number,
+            }
+        )
 
     package_data["versions"] = versions
     return package_data
@@ -153,3 +159,17 @@ def test_adding_package_to_versions_fail():
     with pytest.raises(ValueError):
         package = packages["SomeUser-somePackage"]
         package.versions.add_package(package)
+
+
+def test_latest_version_fetching():
+    data = [
+        create_package_data("SomeUser", "somePackage", ["1.0.1", "1.0.2"]),
+        create_package_data("another", "package", ["1.0.7", "2.0.2"]),
+    ]
+    packages = Packages.with_data(data)
+
+    latest = packages["SomeUser-somePackage"].versions.latest
+    assert latest.version_number == StrictVersion("1.0.2")
+
+    latest = packages["another-package"].versions.latest
+    assert latest.version_number == StrictVersion("2.0.2")

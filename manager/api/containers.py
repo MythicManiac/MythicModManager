@@ -1,3 +1,5 @@
+from cached_property import cached_property
+
 from .types import PackageReference
 
 
@@ -102,3 +104,8 @@ class PackageVersions(PackageContainer):
         from .models import PackageVersion
 
         return PackageVersion
+
+    @cached_property
+    def latest(self):
+        ordered = sorted(self.values(), key=lambda version: version.version_number)
+        return ordered[-1]
