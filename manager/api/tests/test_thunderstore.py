@@ -12,3 +12,4 @@ def test_api_data_loading():
         data = json.load(f)
     api = ThunderstoreAPI("http://localhost/")
     api.update_packages_with_data(data)
+    assert len(api.get_package_names()) == len(data)

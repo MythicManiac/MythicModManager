@@ -110,3 +110,5 @@ def test_package_model():
     assert version.uuid4 == UUID("c5eaa105-a522-49aa-bae6-8c423ec06310")
     assert str(version) == "MythicManiac-MythicModManager-1.0.1"
     assert repr(version) == "<Package: MythicManiac-MythicModManager-1.0.1>"
+
+    assert package.total_downloads == 2670 + 62
