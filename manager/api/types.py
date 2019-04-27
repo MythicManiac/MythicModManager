@@ -11,10 +11,12 @@ class PackageReference:
         :param str namespace: The namespace of the referenced package
         :param str name: The name of the referenced package
         :param version: The version of the referenced package
-        :type version: StrictVersion or None
+        :type version: StrictVersion or str or None
         """
         self.namespace = namespace
         self.name = name
+        if version is not None and not isinstance(version, StrictVersion):
+            version = StrictVersion(version)
         self.version = version
 
     def __str__(self) -> str:
@@ -23,6 +25,9 @@ class PackageReference:
             return f"{self.namespace}-{self.name}-{version}"
         else:
             return f"{self.namespace}-{self.name}"
+
+    def __repr__(self) -> str:
+        return f"<PackageReference: {str(self)}>"
 
     def is_same_package(self, other) -> bool:
         """
@@ -106,3 +111,14 @@ class PackageReference:
         if self.version:
             return PackageReference(namespace=self.namespace, name=self.name)
         return self
+
+    def with_version(self, version) -> PackageReference:
+        """
+        Return this same package reference with a different version
+
+        :return: A reference to this package's specific version
+        :rtype: PackageReference
+        """
+        return PackageReference(
+            namespace=self.namespace, name=self.name, version=version
+        )

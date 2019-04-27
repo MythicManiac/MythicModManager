@@ -33,6 +33,12 @@ class BasePackage:
         """ UUID4 of this package """
         return UUID(self.data["uuid4"])
 
+    def __str__(self) -> str:
+        return str(self.package_reference)
+
+    def __repr__(self) -> str:
+        return f"<Package: {str(self)}>"
+
 
 class PackageVersion(BasePackage):
     @property

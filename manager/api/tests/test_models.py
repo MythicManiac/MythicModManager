@@ -76,6 +76,8 @@ def test_package_model():
     assert package.date_updated == dateutil.parser.parse("2019-04-22T21:27:16.567749Z")
     assert package.uuid4 == UUID("01a37972-5a4f-4419-8725-f54a29c862d3")
     assert package.is_pinned is True
+    assert str(package) == "MythicManiac-MythicModManager"
+    assert repr(package) == "<Package: MythicManiac-MythicModManager>"
 
     assert len(package.versions) == 2
     for version in package.versions:
@@ -107,3 +109,5 @@ def test_package_model():
     assert version.website_url == "https://github.com/MythicManiac/MythicModManager"
     assert version.is_active is True
     assert version.uuid4 == UUID("c5eaa105-a522-49aa-bae6-8c423ec06310")
+    assert str(version) == "MythicManiac-MythicModManager-1.0.1"
+    assert repr(version) == "<Package: MythicManiac-MythicModManager-1.0.1>"

@@ -1,5 +1,7 @@
 import pytest
 
+from distutils.version import StrictVersion
+
 from ..types import PackageReference
 
 
@@ -119,3 +121,37 @@ def test_hash_matching(A_str, B_str, should_equal):
     A = PackageReference.parse(A_str)
     B = PackageReference.parse(B_str)
     assert (hash(A) == hash(B)) == should_equal
+
+
+@pytest.mark.parametrize(
+    "version_number, should_raise",
+    [
+        ["101", True],
+        ["101.asdas.wfefwe", True],
+        ["101.3223.2323", False],
+        [StrictVersion("1.0.1"), False],
+    ],
+)
+def test_init_version_parsing(version_number, should_raise):
+    if should_raise:
+        with pytest.raises(ValueError):
+            PackageReference("User", "package", version_number)
+    else:
+        reference = PackageReference("User", "package", version_number)
+        version = ".".join(str(x) for x in reference.version.version)
+        assert version == version_number
+
+
+@pytest.mark.parametrize(
+    "reference, correct",
+    [
+        ["user-package-1.0.0", "<PackageReference: user-package-1.0.0>"],
+        ["user-package-1.2.0", "<PackageReference: user-package-1.2.0>"],
+        ["user-package-1.2.4", "<PackageReference: user-package-1.2.4>"],
+        ["user-package", "<PackageReference: user-package>"],
+        ["user-SomePackages", "<PackageReference: user-SomePackages>"],
+        ["asd-SomePackages", "<PackageReference: asd-SomePackages>"],
+    ],
+)
+def test_repr(reference, correct):
+    assert repr(PackageReference.parse(reference)) == correct

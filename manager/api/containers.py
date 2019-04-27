@@ -7,7 +7,8 @@ class PackageContainer:
     def __init__(self):
         self.packages = {}
 
-    def __len__(self):
+    def __len__(self) -> int:
+        """ Return the total count of packages in this container """
         return len(self.packages)
 
     @staticmethod
@@ -23,10 +24,6 @@ class PackageContainer:
     def __getitem__(self, key):
         key = self._handle_key(key)
         return self.packages[key]
-
-    def __delitem__(self, key):
-        key = self._handle_key(key)
-        del self.packages[key]
 
     def __iter__(self):
         return iter(self.packages.values())
@@ -84,6 +81,12 @@ class Packages(PackageContainer):
         if key.version:
             return self.packages[key.without_version].versions[key]
         return self.packages[key]
+
+    def __contains__(self, item) -> bool:
+        item = self._handle_key(item)
+        if item.version:
+            return item in self.packages[item.without_version].versions
+        return item in self.packages
 
 
 class PackageVersions(PackageContainer):
