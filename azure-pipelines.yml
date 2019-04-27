@@ -20,6 +20,10 @@ steps:
   displayName: 'Use Python $(python.version)'
 
 - script: |
+    sudo apt-get install libgtk-3-dev
+  displayName: 'Install gtk3'
+
+- script: |
     sudo apt-get update && sudo apt-get install python3-tk -y
     python -m pip install --upgrade pip
     pip install -r requirements.txt
