@@ -5,10 +5,8 @@ from pathlib import Path
 import inspect
 import threading
 
-
-class GridFrame(wx.Frame):
+class TabOne(wx.Panel):
     def __init__(self, parent):
-
         ####################################################################
         #                     ###                                          #
         #                     ###                                          #
@@ -33,8 +31,7 @@ class GridFrame(wx.Frame):
 
         ####################################################################
         # Instantiate frame
-        wx.Frame.__init__(self, parent, style=wx.DEFAULT_FRAME_STYLE)
-        self.SetSize(wx.DLG_UNIT(self, wx.Size(300, 260)))
+        wx.Panel.__init__(self, parent)
 
         ####################################################################
         # Instantiate element winddows
@@ -129,7 +126,22 @@ class GridFrame(wx.Frame):
         btn = event.GetEventObject().GetLabel()
 
         if btn == ">":
-            msg = wx.MessageDialog(self,"JKHasd.", "About", wx.OK | wx.ICON_INFORMATION)
+            msg = wx.MessageDialog(self,">", "Button", wx.OK | wx.ICON_INFORMATION)
+            msg.ShowModal()
+            msg.Destroy()
+
+        elif btn == "<":
+            msg = wx.MessageDialog(self,"<", "Button", wx.OK | wx.ICON_INFORMATION)
+            msg.ShowModal()
+            msg.Destroy()
+
+        elif btn == "Refresh":
+            msg = wx.MessageDialog(self,"Refresh", "Button", wx.OK | wx.ICON_INFORMATION)
+            msg.ShowModal()
+            msg.Destroy()
+
+        elif btn == "Update Bepis":
+            msg = wx.MessageDialog(self,"Update Bepis", "Button", wx.OK | wx.ICON_INFORMATION)
             msg.ShowModal()
             msg.Destroy()
 
@@ -148,6 +160,50 @@ class GridFrame(wx.Frame):
         print(event)
         event.Skip()
 
+
+class TabTwo(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent)
+        # self.i_downloadlist = wx.ListBox(choices=["Mod A", "b", "c", "d"], name='listA',
+        #                           parent=self, style=0)
+        self.grid = wx.grid.Grid(self, -1)
+        self.grid.CreateGrid(100, 4)
+        self.grid.EnableEditing(False)
+
+        self.grid.SetColLabelValue(0, "Name")
+        self.grid.SetColLabelValue(1, "Description")
+        self.grid.SetColLabelValue(2, "Version")
+        self.grid.SetColLabelValue(3, "Local")
+
+        sizer = wx.BoxSizer()
+        sizer.Add(self.grid, 1, wx.EXPAND)
+        self.grid.Bind(wx.EVT_SIZE, self.OnSize)
+        self.SetSizer(sizer)
+
+    def OnSize(self, event):
+        width, height = self.GetClientSize()
+        colwidth = (width-100)/20
+        self.grid.SetColSize(0, colwidth*4)
+        self.grid.SetColSize(1, colwidth*10)
+        self.grid.SetColSize(2, colwidth*3)
+        self.grid.SetColSize(3, colwidth*3)
+
+class GridFrame(wx.Frame):
+    def __init__(self, parent):
+        wx.Frame.__init__(self, parent, style=wx.DEFAULT_FRAME_STYLE)
+        self.SetSize(wx.DLG_UNIT(self, wx.Size(300, 260)))
+        p = wx.Panel(self)
+        nb = wx.Notebook(p)
+        tab1 = TabOne(nb)
+        tab2 = TabTwo(nb)
+        nb.AddPage(tab1, "Manage")
+        nb.AddPage(tab2, "Download")
+        # Set noteboook in a sizer to create the layout
+        sizer = wx.BoxSizer()
+        sizer.Add(nb, 1, wx.EXPAND)
+        p.SetSizer(sizer)
+        self.Layout()
+        self.Show()
 
 if __name__ == '__main__':
 
