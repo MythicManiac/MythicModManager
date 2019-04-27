@@ -1,6 +1,6 @@
 import requests
 
-from .packages import Packages
+from .containers import Packages
 
 
 class ThunderstoreAPI:

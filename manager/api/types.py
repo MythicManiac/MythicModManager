@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from distutils.version import StrictVersion
 
+from cached_property import cached_property
+
 
 class PackageReference:
     def __init__(self, namespace, name, version=None):
@@ -92,3 +94,15 @@ class PackageReference:
             raise ValueError("Invalid package reference string")
 
         return PackageReference(namespace=namespace, name=name, version=version)
+
+    @cached_property
+    def without_version(self) -> PackageReference:
+        """
+        Return this same package reference with version information removed
+
+        :return: Versionless reference to the same package
+        :rtype: PackageReference
+        """
+        if self.version:
+            return PackageReference(namespace=self.namespace, name=self.name)
+        return self

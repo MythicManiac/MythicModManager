@@ -81,7 +81,7 @@ def test_package_model():
     for version in package.versions:
         assert isinstance(version, PackageVersion)
 
-    version = package.versions[0]
+    version = package.versions["MythicManiac-MythicModManager-1.0.1"]
     assert version.name == "MythicModManager"
     assert version.full_name == PackageReference.parse(
         "MythicManiac-MythicModManager-1.0.1"

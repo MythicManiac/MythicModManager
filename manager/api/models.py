@@ -11,21 +11,34 @@ from uuid import UUID
 from cached_property import cached_property
 
 from .types import PackageReference
+from .containers import PackageVersions
 
 
-class PackageVersion:
+class BasePackage:
     def __init__(self, data):
         self.data = data
 
+    @cached_property
+    def full_name(self) -> PackageReference:
+        """ The package reference to this package """
+        return PackageReference.parse(self.data["full_name"])
+
+    @property
+    def package_reference(self) -> PackageReference:
+        """ The package reference to this package """
+        return self.full_name
+
+    @cached_property
+    def uuid4(self) -> UUID:
+        """ UUID4 of this package """
+        return UUID(self.data["uuid4"])
+
+
+class PackageVersion(BasePackage):
     @property
     def name(self) -> str:
         """ Name of this package version """
         return self.data["name"]
-
-    @cached_property
-    def full_name(self) -> PackageReference:
-        """ The package reference to this package version """
-        return PackageReference.parse(self.data["full_name"])
 
     @property
     def description(self) -> str:
@@ -72,25 +85,12 @@ class PackageVersion:
         """ Whether or not this package version is active/enabled """
         return bool(self.data["is_active"])
 
-    @cached_property
-    def uuid4(self) -> UUID:
-        """ UUID4 of this package version """
-        return UUID(self.data["uuid4"])
 
-
-class Package:
-    def __init__(self, data):
-        self.data = data
-
+class Package(BasePackage):
     @property
     def name(self) -> str:
         """ Name of this package """
         return self.data["name"]
-
-    @cached_property
-    def full_name(self) -> PackageReference:
-        """ The package reference object to this package """
-        return PackageReference.parse(self.data["full_name"])
 
     @property
     def owner(self) -> str:
@@ -118,11 +118,6 @@ class Package:
         return dateutil.parser.parse(self.data["date_updated"])
 
     @cached_property
-    def uuid4(self) -> UUID:
-        """ UUID4 of this package """
-        return UUID(self.data["uuid4"])
-
-    @cached_property
     def is_pinned(self) -> bool:
         """ Is this package pinned on the mod list or not """
         return bool(self.data["is_pinned"])
@@ -130,4 +125,4 @@ class Package:
     @cached_property
     def versions(self) -> List[PackageVersion]:
         """ List of PackageVersion objects for this package """
-        return [PackageVersion(entry) for entry in self.data["versions"]]
+        return PackageVersions.with_data(self.data["versions"])
