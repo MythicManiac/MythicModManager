@@ -34,40 +34,41 @@ class TabOne(wx.Panel):
         # Instantiate element winddows
 
         self.i_listA = wx.ListBox(choices=[], name="listA", parent=self, style=0)
-        self.i_listA.Bind(wx.EVT_LISTBOX, self.onSingleSelect)
-        self.i_listA.Bind(wx.EVT_LISTBOX_DCLICK, self.OnDoubleCLick)
+        self.i_listA.Bind(wx.EVT_LISTBOX, self.on_single_select)
+        self.i_listA.Bind(wx.EVT_LISTBOX_DCLICK, self.on_double_click)
 
         self.i_listB = wx.ListBox(choices=[], name="listB", parent=self, style=0)
-        self.i_listB.Bind(wx.EVT_LISTBOX, self.onSingleSelect)
-        self.i_listB.Bind(wx.EVT_LISTBOX_DCLICK, self.OnDoubleCLick)
+        self.i_listB.Bind(wx.EVT_LISTBOX, self.on_single_select)
+        self.i_listB.Bind(wx.EVT_LISTBOX_DCLICK, self.on_double_click)
 
         self.unknown_bmp = wx.Bitmap(
-            wx.Image("unknown.png").Scale(180, 180), wx.IMAGE_QUALITY_HIGH
+            wx.Image("resources/icon-unknown.png").Scale(180, 180),
+            wx.IMAGE_QUALITY_HIGH,
         )
         self.i_portrait = wx.StaticBitmap(self, bitmap=self.unknown_bmp)
         self.i_infoscreen = wx.TextCtrl(self, value="Mod info")
 
         self.i_refresh = wx.Button(self, wx.ID_ANY, "Refresh")
-        self.i_refresh.Bind(wx.EVT_BUTTON, self.OnClicked)
+        self.i_refresh.Bind(wx.EVT_BUTTON, self.on_click)
         self.i_bepis = wx.Button(self, wx.ID_ANY, "Update Bepis")
-        self.i_bepis.Bind(wx.EVT_BUTTON, self.OnClicked)
+        self.i_bepis.Bind(wx.EVT_BUTTON, self.on_click)
         self.i_parse = wx.Button(self, wx.ID_ANY, "Parse Download")
-        self.i_parse.Bind(wx.EVT_BUTTON, self.OnClicked)
+        self.i_parse.Bind(wx.EVT_BUTTON, self.on_click)
         self.i_export = wx.Button(self, wx.ID_ANY, "Export")
-        self.i_export.Bind(wx.EVT_BUTTON, self.OnClicked)
+        self.i_export.Bind(wx.EVT_BUTTON, self.on_click)
         self.i_import = wx.Button(self, wx.ID_ANY, "Import")
-        self.i_import.Bind(wx.EVT_BUTTON, self.OnClicked)
+        self.i_import.Bind(wx.EVT_BUTTON, self.on_click)
 
         self.i_left = wx.Button(self, wx.ID_ANY, "<", size=(50, 30))
-        self.i_left.Bind(wx.EVT_BUTTON, self.OnClicked)
+        self.i_left.Bind(wx.EVT_BUTTON, self.on_click)
 
         self.i_right = wx.Button(self, wx.ID_ANY, ">", size=(50, 30))
-        self.i_right.Bind(wx.EVT_BUTTON, self.OnClicked)
+        self.i_right.Bind(wx.EVT_BUTTON, self.on_click)
 
         self.i_update = wx.Button(self, wx.ID_ANY, "Update package")
-        self.i_update.Bind(wx.EVT_BUTTON, self.OnClicked)
+        self.i_update.Bind(wx.EVT_BUTTON, self.on_click)
         self.i_view = wx.Button(self, wx.ID_ANY, "View on Thunderstore")
-        self.i_view.Bind(wx.EVT_BUTTON, self.OnClicked)
+        self.i_view.Bind(wx.EVT_BUTTON, self.on_click)
 
         ####################################################################
         # Instantiate sizers
@@ -113,12 +114,12 @@ class TabOne(wx.Panel):
         self.Layout()
         self.Show()
 
-    def OnDoubleCLick(self, event):
+    def on_double_click(self, event):
         print("Doubleclick!")
         print(event)
         event.Skip()
 
-    def OnClicked(self, event):
+    def on_click(self, event):
         btn = event.GetEventObject().GetLabel()
 
         if btn == ">":
@@ -145,7 +146,7 @@ class TabOne(wx.Panel):
             msg.ShowModal()
             msg.Destroy()
 
-    def onSingleSelect(self, event):
+    def on_single_select(self, event):
         """
         Get the selection of a single cell by clicking or
         moving the selection with the arrow keys
@@ -207,8 +208,11 @@ class GridFrame(wx.Frame):
         self.Show()
 
 
-if __name__ == "__main__":
-
+def main():
     app = wx.App(0)
-    frame = GridFrame(None)
+    GridFrame(None)
     app.MainLoop()
+
+
+if __name__ == "__main__":
+    main()
