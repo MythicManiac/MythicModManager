@@ -14,6 +14,7 @@ class ObjectList:
             self.column_labels = column_labels
         else:
             self.column_labels = [x.capitalize().replace("_", " ") for x in columns]
+        self.objects = []
 
         self.element.ClearAll()
         for index, label in enumerate(self.column_labels):
@@ -33,6 +34,20 @@ class ObjectList:
                 label = str(getattr(entry, self.columns[i], None) or "")
                 item.SetText(label)
                 self.element.SetItem(item)
+        self.objects = new_objects
+
+    def get_selected_objects(self):
+        selection = self.element.GetFirstSelected()
+        if selection == -1:
+            return None
+
+        selections = [self.objects[selection]]
+        while selection != -1:
+            selection = self.element.GetNextSelected(selection)
+            if selection != -1:
+                selections.append(self.objects[selection])
+
+        return selections
 
     def resize_columns(self):
         width, height = self.element.GetClientSize()
@@ -74,6 +89,9 @@ class Application:
             columns=("name", "namespace", "version"),
             column_labels=("Name", "Author", "Version"),
         )
+        self.job_queue_list = ObjectList(
+            element=self.main_frame.job_queue_list, columns=("task", "parameters")
+        )
         self.configuration = ModManagerConfiguration(
             thunderstore_url="https://thunderstore.io/",
             mod_cache_path="mod-cache/",
@@ -84,12 +102,18 @@ class Application:
         self.manager = ModManager(self.configuration)
         self.bind_events()
 
+    def handle_remote_mod_list_select(self, event=None):
+        self.remote_mod_list.get_selected_objects()
+
     def bind_events(self):
         self.main_frame.mod_list_refresh_button.Bind(
             wx.EVT_BUTTON, self.refresh_remote_mod_list
         )
         self.main_frame.downloaded_mods_group_version_checkbox.Bind(
             wx.EVT_CHECKBOX, self.refresh_downloaded_mod_list
+        )
+        self.main_frame.mod_list_list.Bind(
+            wx.EVT_LIST_ITEM_SELECTED, self.handle_remote_mod_list_select
         )
 
     def refresh_remote_mod_list(self, event=None):
