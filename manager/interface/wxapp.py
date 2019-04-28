@@ -24,12 +24,14 @@ class ObjectList:
     def update(self, new_objects):
         self.element.DeleteAllItems()
         for row, entry in enumerate(new_objects):
-            self.element.InsertItem(row, getattr(entry, self.columns[0], ""))
+            label = str(getattr(entry, self.columns[0], None) or "")
+            self.element.InsertItem(row, label)
             for i in range(1, len(self.columns)):
                 item = wx.ListItem()
                 item.SetId(row)
                 item.SetColumn(i)
-                item.SetText(str(getattr(entry, self.columns[i], "")))
+                label = str(getattr(entry, self.columns[i], None) or "")
+                item.SetText(label)
                 self.element.SetItem(item)
 
     def resize_columns(self):
@@ -64,11 +66,13 @@ class Application:
         )
         self.installed_mod_list = ObjectList(
             element=self.main_frame.installed_mods_list,
-            columns=("name", "namespace", "description", "version"),
+            columns=("name", "namespace", "version"),
+            column_labels=("Name", "Author", "Version"),
         )
         self.downloaded_mod_list = ObjectList(
             element=self.main_frame.downloaded_mods_list,
-            columns=("name", "namespace", "description", "version"),
+            columns=("name", "namespace", "version"),
+            column_labels=("Name", "Author", "Version"),
         )
         self.configuration = ModManagerConfiguration(
             thunderstore_url="https://thunderstore.io/",
@@ -84,11 +88,17 @@ class Application:
         self.main_frame.mod_list_refresh_button.Bind(
             wx.EVT_BUTTON, self.refresh_remote_mod_list
         )
+        self.main_frame.downloaded_mods_group_version_checkbox.Bind(
+            wx.EVT_CHECKBOX, self.refresh_downloaded_mod_list
+        )
 
-    def refresh_remote_mod_list(self, event):
+    def refresh_remote_mod_list(self, event=None):
         try:
             self.manager.api.update_packages()
-            self.remote_mod_list.update(self.manager.api.packages.values())
+            packages = sorted(
+                self.manager.api.packages.values(), key=lambda entry: entry.name
+            )
+            self.remote_mod_list.update(packages)
         except Exception as e:
             log_exception(self.configuration.log_path, e)
             wx.MessageBox(
@@ -97,11 +107,19 @@ class Application:
                 wx.OK | wx.ICON_ERROR,
             )
 
-    def refresh_manager_mod_lists(self):
-        self.installed_mod_list.update(self.manager.installed_packages)
-        self.downloaded_mod_list.update(self.manager.cached_packages)
+    def refresh_installed_mod_list(self, event=None):
+        packages = sorted(self.manager.installed_packages, key=lambda entry: entry.name)
+        self.installed_mod_list.update(packages)
+
+    def refresh_downloaded_mod_list(self, event=None):
+        packages = self.manager.cached_packages
+        if self.main_frame.downloaded_mods_group_version_checkbox.GetValue():
+            packages = set([package.without_version for package in packages])
+        packages = sorted(packages, key=lambda entry: entry.name)
+        self.downloaded_mod_list.update(packages)
 
     def launch(self):
         self.main_frame.Show()
-        self.refresh_manager_mod_lists()
+        self.refresh_installed_mod_list()
+        self.refresh_downloaded_mod_list()
         self.app.MainLoop()

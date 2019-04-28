@@ -18,13 +18,21 @@ class MainFrame(wx.Frame):
         # begin wxGlade: MainFrame.__init__
         kwds["style"] = kwds.get("style", 0) | wx.DEFAULT_FRAME_STYLE
         wx.Frame.__init__(self, *args, **kwds)
-        self.SetSize((859, 624))
+        self.SetSize((937, 647))
         self.main_content_notebook = wx.Notebook(self, wx.ID_ANY)
         self.manager_tab = wx.Panel(self.main_content_notebook, wx.ID_ANY)
-        self.button_4 = wx.Button(self.manager_tab, wx.ID_ANY, "Uninstall")
-        self.button_5 = wx.Button(self.manager_tab, wx.ID_ANY, "Check for updates")
-        self.button_6 = wx.Button(self.manager_tab, wx.ID_ANY, "Export")
-        self.button_7 = wx.Button(self.manager_tab, wx.ID_ANY, "Import")
+        self.installed_mods_uninstall_button = wx.Button(
+            self.manager_tab, wx.ID_ANY, "Uninstall"
+        )
+        self.installed_mods_update_button = wx.Button(
+            self.manager_tab, wx.ID_ANY, "Check for updates"
+        )
+        self.installed_mods_export_button = wx.Button(
+            self.manager_tab, wx.ID_ANY, "Export"
+        )
+        self.installed_mods_import_button = wx.Button(
+            self.manager_tab, wx.ID_ANY, "Import"
+        )
         self.installed_mods_list = wx.ListCtrl(
             self.manager_tab,
             wx.ID_ANY,
@@ -35,6 +43,9 @@ class MainFrame(wx.Frame):
         )
         self.downloaded_mods_delete_button = wx.Button(
             self.manager_tab, wx.ID_ANY, "Delete"
+        )
+        self.downloaded_mods_group_version_checkbox = wx.CheckBox(
+            self.manager_tab, wx.ID_ANY, "Group by version"
         )
         self.downloaded_mods_list = wx.ListCtrl(
             self.manager_tab,
@@ -94,6 +105,7 @@ class MainFrame(wx.Frame):
         self.installed_mods_list.AppendColumn(
             "Version", format=wx.LIST_FORMAT_LEFT, width=79
         )
+        self.downloaded_mods_group_version_checkbox.SetValue(1)
         self.downloaded_mods_list.AppendColumn(
             "Name", format=wx.LIST_FORMAT_LEFT, width=132
         )
@@ -156,10 +168,18 @@ class MainFrame(wx.Frame):
             )
         )
         installed_mods_sizer.Add(installed_mods_title, 0, 0, 0)
-        installed_mods_buttons_sizer.Add(self.button_4, 1, wx.EXPAND, 0)
-        installed_mods_buttons_sizer.Add(self.button_5, 1, wx.EXPAND, 0)
-        installed_mods_buttons_sizer.Add(self.button_6, 1, wx.EXPAND, 0)
-        installed_mods_buttons_sizer.Add(self.button_7, 1, wx.EXPAND, 0)
+        installed_mods_buttons_sizer.Add(
+            self.installed_mods_uninstall_button, 1, wx.EXPAND, 0
+        )
+        installed_mods_buttons_sizer.Add(
+            self.installed_mods_update_button, 1, wx.EXPAND, 0
+        )
+        installed_mods_buttons_sizer.Add(
+            self.installed_mods_export_button, 1, wx.EXPAND, 0
+        )
+        installed_mods_buttons_sizer.Add(
+            self.installed_mods_import_button, 1, wx.EXPAND, 0
+        )
         installed_mods_sizer.Add(installed_mods_buttons_sizer, 0, wx.EXPAND, 0)
         installed_mods_sizer.Add(self.installed_mods_list, 1, wx.EXPAND, 0)
         manager_sizer.Add(installed_mods_sizer, 1, wx.EXPAND, 0)
@@ -179,6 +199,9 @@ class MainFrame(wx.Frame):
         downloaded_mods_sizer.Add(downloaded_mods_title, 0, 0, 0)
         downloaded_mods_buttons_sizer.Add(self.downloaded_mods_install_button, 1, 0, 0)
         downloaded_mods_buttons_sizer.Add(self.downloaded_mods_delete_button, 1, 0, 0)
+        downloaded_mods_buttons_sizer.Add(
+            self.downloaded_mods_group_version_checkbox, 0, wx.ALIGN_CENTER | wx.ALL, 4
+        )
         downloaded_mods_sizer.Add(downloaded_mods_buttons_sizer, 0, wx.EXPAND, 0)
         downloaded_mods_sizer.Add(self.downloaded_mods_list, 1, wx.EXPAND, 0)
         manager_sizer.Add(downloaded_mods_sizer, 1, wx.EXPAND, 0)
