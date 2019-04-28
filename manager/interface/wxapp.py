@@ -64,11 +64,11 @@ class Application:
         )
         self.installed_mod_list = ObjectList(
             element=self.main_frame.installed_mods_list,
-            columns=("name", "author", "description", "version"),
+            columns=("name", "namespace", "description", "version"),
         )
         self.downloaded_mod_list = ObjectList(
             element=self.main_frame.downloaded_mods_list,
-            columns=("name", "author", "description", "version"),
+            columns=("name", "namespace", "description", "version"),
         )
         self.configuration = ModManagerConfiguration(
             thunderstore_url="https://thunderstore.io/",
@@ -78,6 +78,12 @@ class Application:
             log_path="logs/",
         )
         self.manager = ModManager(self.configuration)
+        self.bind_events()
+
+    def bind_events(self):
+        self.main_frame.mod_list_refresh_button.Bind(
+            wx.EVT_BUTTON, self.refresh_remote_mod_list
+        )
 
     def refresh_remote_mod_list(self, event):
         try:
@@ -91,27 +97,11 @@ class Application:
                 wx.OK | wx.ICON_ERROR,
             )
 
+    def refresh_manager_mod_lists(self):
+        self.installed_mod_list.update(self.manager.installed_packages)
+        self.downloaded_mod_list.update(self.manager.cached_packages)
+
     def launch(self):
         self.main_frame.Show()
-        self.main_frame.mod_list_refresh_button.Bind(
-            wx.EVT_BUTTON, self.refresh_remote_mod_list
-        )
-        self.remote_mod_list.update(
-            [
-                TestMod(
-                    name="Test",
-                    author="AnotherTest",
-                    description="Not a description",
-                    version="1.0.3",
-                    downloads=5,
-                ),
-                TestMod(
-                    name="SomeMod",
-                    author="SomeAuthor",
-                    description="This is not a real mod",
-                    version="0.0.1",
-                    downloads=3289,
-                ),
-            ]
-        )
+        self.refresh_manager_mod_lists()
         self.app.MainLoop()
