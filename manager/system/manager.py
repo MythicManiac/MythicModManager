@@ -12,12 +12,18 @@ from zipfile import ZipFile
 
 class ModManagerConfiguration:
     def __init__(
-        self, thunderstore_url, mod_cache_path, risk_of_rain_path, mod_install_path
+        self,
+        thunderstore_url,
+        mod_cache_path,
+        risk_of_rain_path,
+        mod_install_path,
+        log_path,
     ):
         self.thunderstore_url = thunderstore_url
         self.mod_cache_path = Path(mod_cache_path).resolve()
         self.mod_install_path = Path(mod_install_path).resolve()
         self.risk_of_rain_path = Path(risk_of_rain_path).resolve()
+        self.log_path = Path(log_path).resolve()
 
 
 class ModManager:

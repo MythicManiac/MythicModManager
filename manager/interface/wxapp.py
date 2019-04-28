@@ -1,6 +1,7 @@
 import wx
 
 from ..system.manager import ModManager, ModManagerConfiguration
+from ..utils.log import log_exception
 
 from .generated import MainFrame
 
@@ -12,7 +13,7 @@ class ObjectList:
         if column_labels:
             self.column_labels = column_labels
         else:
-            self.column_labels = columns
+            self.column_labels = [x.capitalize().replace("_", " ") for x in columns]
 
         self.element.ClearAll()
         for index, label in enumerate(self.column_labels):
@@ -20,15 +21,7 @@ class ObjectList:
         self.resize_columns()
         self.element.Bind(wx.EVT_SIZE, lambda event: self.resize_columns())
 
-    def OnSize(self, event):
-        width, height = self.GetClientSize()
-        colwidth = (width - 100) / 20
-        self.grid.SetColSize(0, colwidth * 4)
-        self.grid.SetColSize(1, colwidth * 10)
-        self.grid.SetColSize(2, colwidth * 3)
-        self.grid.SetColSize(3, colwidth * 3)
-
-    def refresh_list(self, new_objects):
+    def update(self, new_objects):
         self.element.DeleteAllItems()
         for row, entry in enumerate(new_objects):
             self.element.InsertItem(row, getattr(entry, self.columns[0], ""))
@@ -61,19 +54,49 @@ class Application:
         self.main_frame = MainFrame(None)
         self.remote_mod_list = ObjectList(
             element=self.main_frame.mod_list_list,
-            columns=("name", "author", "description", "version", "downloads"),
+            columns=(
+                "name",
+                "owner",
+                "description",
+                "latest_version",
+                "total_downloads",
+            ),
         )
-        configuration = ModManagerConfiguration(
+        self.installed_mod_list = ObjectList(
+            element=self.main_frame.installed_mods_list,
+            columns=("name", "author", "description", "version"),
+        )
+        self.downloaded_mod_list = ObjectList(
+            element=self.main_frame.downloaded_mods_list,
+            columns=("name", "author", "description", "version"),
+        )
+        self.configuration = ModManagerConfiguration(
             thunderstore_url="https://thunderstore.io/",
             mod_cache_path="mod-cache/",
             mod_install_path="risk-of-rain-2/mods/",
             risk_of_rain_path="risk-of-rain-2/",
+            log_path="logs/",
         )
-        self.manager = ModManager(configuration)
+        self.manager = ModManager(self.configuration)
+
+    def refresh_remote_mod_list(self, event):
+        try:
+            self.manager.api.update_packages()
+            self.remote_mod_list.update(self.manager.api.packages.values())
+        except Exception as e:
+            log_exception(self.configuration.log_path, e)
+            wx.MessageBox(
+                "Failed to pull remote package data. Server could be offline.",
+                "Error",
+                wx.OK | wx.ICON_ERROR,
+            )
 
     def launch(self):
         self.main_frame.Show()
-        self.remote_mod_list.refresh_list(
+        self.main_frame.mod_list_refresh_button.Bind(
+            wx.EVT_BUTTON, self.refresh_remote_mod_list
+        )
+        self.remote_mod_list.update(
             [
                 TestMod(
                     name="Test",

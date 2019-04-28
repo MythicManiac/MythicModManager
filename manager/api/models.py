@@ -136,3 +136,13 @@ class Package(BasePackage):
     def total_downloads(self) -> int:
         """ The total amount of times this package has been downloaded """
         return sum(version.downloads for version in self.versions)
+
+    @cached_property
+    def description(self) -> str:
+        """ The description of the latest version """
+        return self.versions.latest.description
+
+    @cached_property
+    def latest_version(self) -> StrictVersion:
+        """ The version of the latest version """
+        return self.versions.latest.version_number
