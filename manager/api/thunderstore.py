@@ -1,4 +1,6 @@
 import requests
+import requests_async
+
 from urllib import parse
 
 from .containers import Packages
@@ -13,6 +15,11 @@ class ThunderstoreAPI:
 
     def update_packages(self):
         data = requests.get(self.package_url).json()
+        self.update_packages_with_data(data)
+
+    async def async_update_packages(self):
+        data = await requests_async.get(self.package_url)
+        data = data.json()
         self.update_packages_with_data(data)
 
     def update_packages_with_data(self, data):

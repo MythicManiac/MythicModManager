@@ -1,6 +1,6 @@
 import wx
 
-from wxasync import WxAsyncApp
+from wxasync import WxAsyncApp, AsyncBind
 from asyncio.events import get_event_loop
 
 from ..system.manager import ModManager, ModManagerConfiguration
@@ -119,8 +119,10 @@ class Application:
         self.main_frame.selection_download_count.Wrap(240)
 
     def bind_events(self):
-        self.main_frame.mod_list_refresh_button.Bind(
-            wx.EVT_BUTTON, self.refresh_remote_mod_list
+        AsyncBind(
+            wx.EVT_BUTTON,
+            self.refresh_remote_mod_list,
+            self.main_frame.mod_list_refresh_button,
         )
         self.main_frame.downloaded_mods_group_version_checkbox.Bind(
             wx.EVT_CHECKBOX, self.refresh_downloaded_mod_list
@@ -129,9 +131,11 @@ class Application:
             wx.EVT_LIST_ITEM_SELECTED, self.handle_remote_mod_list_select
         )
 
-    def refresh_remote_mod_list(self, event=None):
+    async def refresh_remote_mod_list(self, event=None):
+        if event:
+            event.GetEventObject().Disable()
         try:
-            self.manager.api.update_packages()
+            await self.manager.api.async_update_packages()
             packages = sorted(
                 self.manager.api.packages.values(), key=lambda entry: entry.name
             )
@@ -143,6 +147,8 @@ class Application:
                 "Error",
                 wx.OK | wx.ICON_ERROR,
             )
+        if event:
+            event.GetEventObject().Enable()
 
     def refresh_installed_mod_list(self, event=None):
         packages = sorted(self.manager.installed_packages, key=lambda entry: entry.name)
