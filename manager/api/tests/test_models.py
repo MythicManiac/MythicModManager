@@ -111,4 +111,4 @@ def test_package_model():
     assert str(version) == "MythicManiac-MythicModManager-1.0.1"
     assert repr(version) == "<Package: MythicManiac-MythicModManager-1.0.1>"
 
-    assert package.total_downloads == 2670 + 62
+    assert package.downloads == 2670 + 62

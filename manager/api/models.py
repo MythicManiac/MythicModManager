@@ -133,7 +133,7 @@ class Package(BasePackage):
         return PackageVersions.with_data(self.data["versions"])
 
     @cached_property
-    def total_downloads(self) -> int:
+    def downloads(self) -> int:
         """ The total amount of times this package has been downloaded """
         return sum(version.downloads for version in self.versions)
 
@@ -141,6 +141,11 @@ class Package(BasePackage):
     def description(self) -> str:
         """ The description of the latest version """
         return self.versions.latest.description
+
+    @cached_property
+    def icon(self) -> str:
+        """ The icon URL of the latest version """
+        return self.versions.latest.icon
 
     @cached_property
     def latest_version(self) -> StrictVersion:

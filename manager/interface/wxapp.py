@@ -74,13 +74,7 @@ class Application:
         self.main_frame = MainFrame(None)
         self.remote_mod_list = ObjectList(
             element=self.main_frame.mod_list_list,
-            columns=(
-                "name",
-                "owner",
-                "description",
-                "latest_version",
-                "total_downloads",
-            ),
+            columns=("name", "owner", "description", "latest_version", "downloads"),
         )
         self.installed_mod_list = ObjectList(
             element=self.main_frame.installed_mods_list,
@@ -106,7 +100,23 @@ class Application:
         self.bind_events()
 
     def handle_remote_mod_list_select(self, event=None):
-        self.remote_mod_list.get_selected_objects()
+        selections = self.remote_mod_list.get_selected_objects()
+        if not selections:
+            return
+        selection = self.manager.resolve_package_metadata(selections[0])
+        self.main_frame.selection_title.SetLabel(selection.name)
+        self.main_frame.selection_title.Wrap(160)
+
+        self.main_frame.selection_description.SetLabel(selection.description)
+        self.main_frame.selection_description.Wrap(240)
+
+        version_text = f"Selected Version: v{selection.version}"
+        self.main_frame.selection_version.SetLabel(version_text)
+        self.main_frame.selection_version.Wrap(240)
+
+        downloads_text = f"Downloads: {selection.downloads}"
+        self.main_frame.selection_download_count.SetLabel(downloads_text)
+        self.main_frame.selection_download_count.Wrap(240)
 
     def bind_events(self):
         self.main_frame.mod_list_refresh_button.Bind(

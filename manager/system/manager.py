@@ -26,6 +26,46 @@ class ModManagerConfiguration:
         self.log_path = Path(log_path).resolve()
 
 
+class PackageMetadata:
+    def __init__(self, namespace, name, version, description, downloads, icon_url):
+        self.namespace = namespace
+        self.name = name
+        self.version = version
+        self.description = description
+        self.downloads = downloads
+        self.icon_url = icon_url
+
+    @property
+    def package_reference(self):
+        return PackageReference(
+            namespace=self.namespace, name=self.name, version=self.version
+        )
+
+    @classmethod
+    def from_package(cls, package):
+        if hasattr(package, "versions"):
+            package = package.versions.latest
+        return cls(
+            namespace=package.package_reference.namespace,
+            name=package.package_reference.name,
+            version=package.package_reference.version_str,
+            description=package.description,
+            icon_url=package.icon,
+            downloads=package.downloads,
+        )
+
+    @classmethod
+    def empty(cls):
+        return cls(
+            namespace="",
+            name="No package selected",
+            version="",
+            description="",
+            icon_url="",  # TODO: Add unknown icon,
+            downloads="",
+        )
+
+
 class ModManager:
     def __init__(self, configuration):
         self.api = ThunderstoreAPI(configuration.thunderstore_url)
@@ -46,6 +86,26 @@ class ModManager:
         return [
             PackageReference.parse(x.stem) for x in self.mod_cache_path.glob("*.zip")
         ]
+
+    def get_installed_package_metadata(self):
+        pass
+
+    def resolve_package_metadata(self, reference):
+        """
+        :param package: The package to resolve metadata for
+        :type package: PackageReference or Package or str
+        """
+        if hasattr(reference, "package_reference"):
+            reference = reference.package_reference
+        if not isinstance(reference, PackageReference):
+            reference = PackageReference.parse(reference)
+        if reference in self.api.packages:
+            return PackageMetadata.from_package(self.api.packages[reference])
+        if reference in self.installed_packages:
+            return self.get_installed_package_metadata(reference)
+        if reference in self.cached_packages:
+            return self.get_cached_package_metadata(reference)
+        return PackageMetadata.empty()
 
     def get_package_cache_path(self, reference):
         return self.mod_cache_path / f"{reference}.zip"

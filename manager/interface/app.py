@@ -30,7 +30,7 @@ class Application:
         )
         self.selection_author = sg.Text(f"", font=("Helvetica", 12), size=(26, 1))
         self.selection_version = sg.Text(f"", font=("Helvetica", 12), size=(26, 1))
-        self.slection_total_downloads = sg.Text(
+        self.selection_total_downloads = sg.Text(
             f"", font=("Helvetica", 12), size=(26, 1)
         )
         self.selection_url = None
@@ -89,7 +89,7 @@ class Application:
                         [self.selection_description],
                         [self.selection_author],
                         [self.selection_version],
-                        [self.slection_total_downloads],
+                        [self.selection_total_downloads],
                         [sg.RealtimeButton("View on Thunderstore")],
                     ]
                 ),
@@ -136,9 +136,7 @@ class Application:
         self.selection_description.Update(version.description)
         self.selection_author.Update(f"Author: {entry.owner}")
         self.selection_version.Update(f"Version: v{version.version_number}")
-        self.slection_total_downloads.Update(
-            f"Total downloads: {entry.total_downloads}"
-        )
+        self.selection_total_downloads.Update(f"Total downloads: {entry.downloads}")
         self.selection_url = entry.package_url
 
     def install_mod(self, package_reference):
