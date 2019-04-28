@@ -79,7 +79,28 @@ class MainFrame(wx.Frame):
             "MythicModManager on GitHub",
             "https://github.com/MythicManiac/MythicModManager/",
         )
+        self.selection_icon_bitmap = wx.StaticBitmap(
+            self,
+            wx.ID_ANY,
+            wx.Bitmap("resources\\icon-unknown.png", wx.BITMAP_TYPE_ANY),
+        )
         self.selection_info_panel = wx.Panel(self, wx.ID_ANY)
+        self.selection_title = wx.StaticText(
+            self.selection_info_panel,
+            wx.ID_ANY,
+            "Placeholder Mod Name That Is Very Long And Could Break The UI",
+        )
+        self.selection_description = wx.StaticText(
+            self.selection_info_panel,
+            wx.ID_ANY,
+            "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in",
+        )
+        self.selection_version = wx.StaticText(
+            self.selection_info_panel, wx.ID_ANY, "Latest Version: v1.0.3"
+        )
+        self.selection_download_count = wx.StaticText(
+            self.selection_info_panel, wx.ID_ANY, "Total downloads: 68309"
+        )
         self.selection_thunderstore_button = wx.Button(
             self, wx.ID_ANY, "View on Thunderstore"
         )
@@ -134,6 +155,20 @@ class MainFrame(wx.Frame):
         self.job_queue_list.AppendColumn(
             "Parameter", format=wx.LIST_FORMAT_LEFT, width=315
         )
+        self.selection_title.SetFont(
+            wx.Font(
+                14,
+                wx.FONTFAMILY_DEFAULT,
+                wx.FONTSTYLE_NORMAL,
+                wx.FONTWEIGHT_NORMAL,
+                0,
+                "Segoe UI",
+            )
+        )
+        self.selection_title.Wrap(160)
+        self.selection_description.Wrap(240)
+        self.selection_version.Wrap(240)
+        self.selection_download_count.Wrap(240)
         # end wxGlade
 
     def __do_layout(self):
@@ -222,50 +257,15 @@ class MainFrame(wx.Frame):
         self.main_content_notebook.AddPage(self.settings_tab, "Settings")
         self.main_content_notebook.AddPage(self.about_tab, "About")
         main_content_sizer.Add(self.main_content_notebook, 1, wx.EXPAND, 0)
-        selection_icon_bitmap = wx.StaticBitmap(
-            self,
-            wx.ID_ANY,
-            wx.Bitmap("resources\\icon-unknown.png", wx.BITMAP_TYPE_ANY),
-        )
-        selection_info_sizer.Add(selection_icon_bitmap, 0, wx.EXPAND, 0)
-        selection_title = wx.StaticText(
-            self.selection_info_panel,
-            wx.ID_ANY,
-            "Placeholder Mod Name That Is Very Long And Could Break The UI",
-        )
-        selection_title.SetFont(
-            wx.Font(
-                14,
-                wx.FONTFAMILY_DEFAULT,
-                wx.FONTSTYLE_NORMAL,
-                wx.FONTWEIGHT_NORMAL,
-                0,
-                "Segoe UI",
-            )
-        )
-        selection_title.Wrap(160)
-        selection_info_panel_sizer.Add(selection_title, 50, 0, 0)
-        selection_description = wx.StaticText(
-            self.selection_info_panel,
-            wx.ID_ANY,
-            "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in",
-        )
-        selection_description.Wrap(240)
-        selection_info_panel_sizer.Add(selection_description, 60, 0, 0)
+        selection_info_sizer.Add(self.selection_icon_bitmap, 0, wx.EXPAND, 0)
+        selection_info_panel_sizer.Add(self.selection_title, 50, 0, 0)
+        selection_info_panel_sizer.Add(self.selection_description, 60, 0, 0)
         selection_info_panel_separator = wx.StaticLine(
             self.selection_info_panel, wx.ID_ANY
         )
         selection_info_panel_sizer.Add(selection_info_panel_separator, 1, wx.EXPAND, 0)
-        selection_latest_version = wx.StaticText(
-            self.selection_info_panel, wx.ID_ANY, "Latest Version: v1.0.3"
-        )
-        selection_latest_version.Wrap(240)
-        selection_info_panel_sizer.Add(selection_latest_version, 10, 0, 0)
-        selection_download_count = wx.StaticText(
-            self.selection_info_panel, wx.ID_ANY, "Total downloads: 68309"
-        )
-        selection_download_count.Wrap(240)
-        selection_info_panel_sizer.Add(selection_download_count, 10, wx.ALL, 0)
+        selection_info_panel_sizer.Add(self.selection_version, 10, 0, 0)
+        selection_info_panel_sizer.Add(self.selection_download_count, 10, wx.ALL, 0)
         self.selection_info_panel.SetSizer(selection_info_panel_sizer)
         selection_info_content_sizer.Add(self.selection_info_panel, 1, wx.EXPAND, 0)
         selection_info_buttons_sizer.Add(
