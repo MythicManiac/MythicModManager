@@ -2,6 +2,7 @@
 *.toml
 mod-cache
 risk-of-rain-2
+*.wxg.bak
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
