@@ -72,6 +72,16 @@ class PackageReference:
             return self.is_same_version(other)
         return False
 
+    def __gt__(self, other):
+        if isinstance(other, PackageReference):
+            return self.version > other.version
+        return super().__gt__(other)
+
+    def __lt__(self, other):
+        if isinstance(other, PackageReference):
+            return self.version < other.version
+        return super().__lt__(other)
+
     def __hash__(self):
         return hash(str(self))
 

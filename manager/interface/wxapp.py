@@ -42,7 +42,7 @@ class ObjectList:
     def get_selected_objects(self):
         selection = self.element.GetFirstSelected()
         if selection == -1:
-            return None
+            return []
 
         selections = [self.objects[selection]]
         while selection != -1:
@@ -150,11 +150,25 @@ class Application:
         if self.current_selection == selection_meta:
             self.main_frame.selection_icon_bitmap.SetBitmap(bitmap)
 
-    async def handle_uninstall_managed_package(self, event=None):
+    async def handle_installed_mod_list_uninstall(self, event=None):
         selections = self.installed_mod_list.get_selected_objects()
         for selection in selections:
             meta = self.manager.resolve_package_metadata(selection)
             self.manager.uninstall_package(meta.package_reference)
+        if selections:
+            self.refresh_installed_mod_list()
+
+    async def handle_downloaded_mod_list_install(self, event=None):
+        selections = self.downloaded_mod_list.get_selected_objects()
+        for selection in selections:
+            meta = self.manager.resolve_package_metadata(selection)
+            reference = meta.package_reference
+            if reference.version:
+                self.manager.install_package(reference)
+            else:
+                newest = self.manager.get_newest_cached(reference)
+                if newest:
+                    self.manager.installed_packages(newest)
         if selections:
             self.refresh_installed_mod_list()
 
@@ -187,8 +201,13 @@ class Application:
         )
         AsyncBind(
             wx.EVT_BUTTON,
-            self.handle_uninstall_managed_package,
+            self.handle_installed_mod_list_uninstall,
             self.main_frame.installed_mods_uninstall_button,
+        )
+        AsyncBind(
+            wx.EVT_BUTTON,
+            self.handle_downloaded_mod_list_install,
+            self.main_frame.downloaded_mods_install_button,
         )
 
     async def refresh_remote_mod_list(self, event=None):

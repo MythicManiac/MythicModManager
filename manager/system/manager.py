@@ -156,6 +156,22 @@ class ModManager:
             icon_data=icon_data,
         )
 
+    def get_newest_from(self, package, references):
+        # TODO: Refactor and use a package container
+        newest = None
+        for version in references:
+            if not version.is_same_package(package):
+                continue
+            if newest is None or version > newest:
+                newest = version
+        return newest
+
+    def get_newest_cached(self, reference):
+        return self.get_newest_from(reference, self.cached_packages)
+
+    def get_newest_installed(self, reference):
+        return self.get_newest_from(reference, self.installed_packages)
+
     def resolve_package_metadata(self, reference):
         """
         :param package: The package to resolve metadata for
@@ -168,32 +184,18 @@ class ModManager:
         if reference in self.api.packages:
             return PackageMetadata.from_package(self.api.packages[reference])
 
-        # TODO: Refactor and use a package container
-        installed_packages = self.installed_packages
         if not reference.version:
-            newest = None
-            for version in installed_packages:
-                if not version.is_same_package(reference):
-                    continue
-                if newest is None or version > newest:
-                    newest = version
-            if newest:
-                return self.get_installed_package_metadata(newest)
+            version = self.get_newest_installed(reference)
+            if version:
+                return self.get_installed_package_metadata(version)
 
-        if reference in installed_packages:
+        if reference in self.installed_packages:
             return self.get_installed_package_metadata(reference)
 
-        # TODO: Refactor and use a package container
-        cached_packages = self.cached_packages
         if not reference.version:
-            newest = None
-            for version in cached_packages:
-                if not version.is_same_package(reference):
-                    continue
-                if newest is None or version > newest:
-                    newest = version
-            if newest:
-                return self.get_cached_package_metadata(newest)
+            version = self.get_newest_cached(reference)
+            if version:
+                return self.get_cached_package_metadata(version)
 
         if reference in self.cached_packages:
             return self.get_cached_package_metadata(reference)
