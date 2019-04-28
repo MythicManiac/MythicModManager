@@ -1,6 +1,7 @@
 # Custom
 *.toml
-manager/mod-cache
+mod-cache
+risk-of-rain-2
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

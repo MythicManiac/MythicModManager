@@ -1,137 +1,109 @@
-import json
 import os
 import requests
 import shutil
 
 from pathlib import Path
 
+from manager.api.types import PackageReference
+from manager.api.thunderstore import ThunderstoreAPI
+
 from zipfile import ZipFile
 
 
+class ModManagerConfiguration:
+    def __init__(
+        self, thunderstore_url, mod_cache_path, risk_of_rain_path, mod_install_path
+    ):
+        self.thunderstore_url = thunderstore_url
+        self.mod_cache_path = Path(mod_cache_path).resolve()
+        self.mod_install_path = Path(mod_install_path).resolve()
+        self.risk_of_rain_path = Path(risk_of_rain_path).resolve()
+
+
 class ModManager:
-    def __init__(self, api, mod_cache_path, risk_of_rain_path):
-        self.api = api
-        self.mod_cache_path = Path(mod_cache_path)
-        self.risk_of_rain_path = risk_of_rain_path
-        self.mod_install_path = risk_of_rain_path / "BepInex/plugins"
+    def __init__(self, configuration):
+        self.api = ThunderstoreAPI(configuration.thunderstore_url)
+        self.mod_cache_path = configuration.mod_cache_path
+        self.mod_install_path = configuration.mod_install_path
+        self.risk_of_rain_path = configuration.risk_of_rain_path
 
-    def verify_bepinex(self):
-        return (self.risk_of_rain_path / "doorstop_config.ini").is_file()
+    @property
+    def installed_packages(self):
+        return [
+            PackageReference.parse(x.name)
+            for x in self.mod_install_path.glob("*")
+            if x.is_dir() and (x / "manifest.json").exists()
+        ]
 
-    def download_mod(self, owner, name, version):
-        full_name = self.get_package_full_name(owner, name, version)
-        download_url = (
-            f"https://thunderstore.io/package/download/{owner}/{name}/{version}/"
-        )
-        print(f"Downloading {full_name}")
+    @property
+    def cached_packages(self):
+        return [
+            PackageReference.parse(x.stem) for x in self.mod_cache_path.glob("*.zip")
+        ]
+
+    def get_package_cache_path(self, reference):
+        return self.mod_cache_path / f"{reference}.zip"
+
+    def get_managed_package_path(self, reference):
+        return self.mod_install_path / f"{reference}"
+
+    def download_package(self, reference):
+        download_url = self.api.get_package_download_url(reference)
+        print(f"Downloading {reference}... ", end="")
+
+        target_dir = self.get_package_cache_path(reference)
+        if not self.mod_cache_path.exists():
+            os.makedirs(self.mod_cache_path)
 
         with requests.get(download_url, stream=True) as r:
             r.raise_for_status()
-            with open(self.mod_cache_path.resolve() / f"{full_name}.zip", "wb") as f:
+            with open(target_dir, "wb") as f:
                 for chunk in (x for x in r.iter_content(chunk_size=8192) if x):
                     f.write(chunk)
+        print("Done!")
 
-    def install_bepinmod_package(self, mod_full_name):
-        package_path = self.mod_cache_path / f"{mod_full_name}.zip"
-        assert package_path.is_file()
-        print(f"Installing {mod_full_name}")
+    def install_extract_package(self, reference):
+        pass  # TODO: Implement
 
-        target_dir = self.mod_install_path / f"mmm-{mod_full_name}"
+    def install_managed_package(self, reference):
+        print(f"Installing {reference}... ", end="")
+        package_path = self.get_package_cache_path(reference)
+        target_dir = self.get_managed_package_path(reference)
+
+        if not target_dir.is_dir():
+            os.makedirs(target_dir)
 
         with ZipFile(package_path) as unzip:
             if unzip.testzip():
                 raise RuntimeError("Corrupted zip file")
-                return
-            for file in unzip.namelist():
-                if file.endswith(".mm.dll"):
-                    continue
-                if file.endswith(".dll"):
-                    unzip.extract(file, target_dir)
+            unzip.extractall(target_dir)
+        print("Done!")
 
-    def get_package_full_name(self, owner, name, version=None):
-        return f"{owner}-{name}{f'-{version}' if version else ''}"
+    def install_package(self, reference):
+        # TODO: Add checking for managed vs. extract package install
+        self.install_managed_package(reference)
 
-    def get_downloaded_packages(self):
-        return [x.stem for x in self.mod_cache_path.glob("*.zip")]
-
-    def get_installed_packages(self):
-        return [
-            (x.name[4:-6], x.name[-5:]) for x in self.mod_install_path.glob("mmm-*")
-        ]
-
-    def export_json(self):
-        installed_packages = self.get_installed_packages()
-        installed_full_versions = [f"{e[0]}-{e[1]}" for e in installed_packages]
-        return json.dumps(installed_full_versions)
-
-    def uninstall_package(self, name, version=None):
-        if version:
-            print(f"Uninstalling {name}-{version}")
-            package_path = self.mod_install_path / f"mmm-{name}-{version}"
+    def uninstall_package(self, reference):
+        if reference.version:
+            print(f"Uninstalling {reference}... ", end="")
+            package_path = self.get_managed_package_path(reference)
             shutil.rmtree(package_path)
+            print("Done!")
         else:
-            installed_packages = self.get_installed_packages()
-            for installed_package in installed_packages:
-                if installed_package[0] == name:
-                    self.uninstall_package(*installed_package)
+            for package in self.installed_packages:
+                if package.is_same_package(reference):
+                    self.uninstall_package(package)
 
-    def install_bepinex(self, mod_full_name):
-        # TODO: re-implement makedirs
-        package_path = self.mod_cache_path / f"{mod_full_name}.zip"
-        assert package_path.is_file()
-        if not self.risk_of_rain_path.exists():
-            self.risk_of_rain_path.mkdir(parents=True, exist_ok=True)
+    def download_and_install_package(self, reference, use_cache=True):
+        installed_packages = self.installed_packages
+        if reference in installed_packages:
+            return
 
-        with ZipFile(package_path) as unzip:
-            if unzip.testzip():
-                raise RuntimeError("Corrupted zip file")
-                return
+        if reference not in self.cached_packages or not use_cache:
+            self.download_package(reference)
 
-            prefix = "BepInExPack/"
-            for entry in unzip.namelist():
-                if not entry.startswith(prefix) or not os.path.basename(entry):
-                    continue
+        for installed_package in self.installed_packages:
+            if installed_package.is_same_package(reference):
+                self.uninstall_package(installed_package)
 
-                file_target = self.risk_of_rain_path / entry[len(prefix) :]
-                if not file_target.parent.exists():
-                    file_target.parent.mkdir(parents=True, exist_ok=True)
-
-                source = unzip.open(entry)
-                target = file_target.open("wb")
-                with source, target:
-                    shutil.copyfileobj(source, target)
-
-    def update_bepinex(self):
-        bepinex_package = self.api.bepinex
-        latest = self.api.get_latest_version(bepinex_package)
-
-        owner = bepinex_package.owner
-        name = bepinex_package.name
-        version = latest.version_number
-        self.download_mod(owner, name, version)
-        self.install_bepinex(self.get_package_full_name(owner, name, version))
-
-    def split_full_version_name(self, full):
-        version = full[-5:]
-        full = full[:-6]
-        name = full.split("-")[-1]
-        owner = "-".join(full.split("-")[:-1])
-        return owner, name, version
-
-    def download_and_install(self, owner, name, version):
-        already_downloaded = self.get_downloaded_packages()
-        version_full_name = self.get_package_full_name(owner, name, version)
-        package_full_name = self.get_package_full_name(owner, name)
-
-        if version_full_name not in already_downloaded:
-            self.download_mod(owner, name, version)
-
-        installed_packages = self.get_installed_packages()
-        for installed_package, installed_version in installed_packages:
-            if installed_package == package_full_name:
-                if installed_version == version:
-                    return
-                else:
-                    self.uninstall_package(installed_package, installed_version)
-
-        self.install_bepinmod_package(version_full_name)
+        self.install_package(reference)

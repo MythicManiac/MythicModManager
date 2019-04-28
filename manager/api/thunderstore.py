@@ -7,8 +7,8 @@ from .containers import Packages
 class ThunderstoreAPI:
     def __init__(self, thunderstore_url):
         self.thunderstore_url = thunderstore_url
-        self.api_url = parse.urljoin(thunderstore_url, "api", "v1")
-        self.package_url = parse.urljoin(self.api_url, "package")
+        self.api_url = parse.urljoin(thunderstore_url, "api/v1/")
+        self.package_url = parse.urljoin(self.api_url, "package/")
         self.packages = Packages()
 
     def update_packages(self):
@@ -27,9 +27,13 @@ class ThunderstoreAPI:
             raise AttributeError("Unable to get package download URL without a version")
         return parse.urljoin(
             self.thunderstore_url,
-            "package",
-            "download",
-            reference.namespace,
-            reference.name,
-            reference.version,
+            "/".join(
+                (
+                    "package",
+                    "download",
+                    reference.namespace,
+                    reference.name,
+                    reference.version_str,
+                )
+            ),
         )

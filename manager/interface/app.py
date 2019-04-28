@@ -2,19 +2,19 @@ import json
 import webbrowser
 import PySimpleGUI as sg
 
-from ..system.manager import ModManager
-from ..api.thunderstore import ThunderstoreAPI
-from ..utils.install_finder import get_install_path
+from ..api.types import PackageReference
+from ..system.manager import ModManager, ModManagerConfiguration
 
 
 class Application:
     def __init__(self):
-        self.api = ThunderstoreAPI(api_url="https://thunderstore.io/api/v1/")
-        self.mod_manager = ModManager(
-            api=self.api,
+        configuration = ModManagerConfiguration(
+            thunderstore_url="https://thunderstore.io/",
             mod_cache_path="mod-cache/",
-            risk_of_rain_path=get_install_path(),
+            mod_install_path="risk-of-rain-2/mods/",
+            risk_of_rain_path="risk-of-rain-2/",
         )
+        self.manager = ModManager(configuration)
         self.build_window()
         if self.can_run:
             self.refresh_installed_mods()
@@ -36,7 +36,7 @@ class Application:
         self.selection_url = None
 
         self.available_packages_list = sg.Listbox(
-            values=self.api.get_package_names(),
+            values=self.manager.api.get_package_names(),
             size=(38, 16),
             select_mode=sg.LISTBOX_SELECT_MODE_EXTENDED,
         )
@@ -67,12 +67,7 @@ class Application:
                     font=("Helvetica", 14),
                 )
             ],
-            [
-                sg.Button("Update BepInEx"),
-                sg.Button("Refresh list"),
-                sg.Button("Export"),
-                sg.Button("Import"),
-            ],
+            [sg.Button("Refresh list"), sg.Button("Export"), sg.Button("Import")],
             [
                 sg.Column(
                     [
@@ -102,7 +97,7 @@ class Application:
             [self.progress_bar],
         ]
 
-        if not self.mod_manager.risk_of_rain_path.exists():
+        if not self.manager.risk_of_rain_path.exists():
             self.can_run = False
             sg.Popup(
                 (
@@ -114,21 +109,14 @@ class Application:
             self.window = sg.Window("Mythic Mod Manager").Layout(self.layout).Finalize()
             self.can_run = True
 
-            if not self.mod_manager.verify_bepinex():
-                sg.Popup(
-                    (
-                        "It seems you don't have BepInex installed. "
-                        + "Please install it by clicking the 'Update BepInEx' button"
-                    )
-                )
-
     def refresh_installed_mods(self):
-        installed_packages = self.mod_manager.get_installed_packages()
-        package_list = [package[0] for package in installed_packages]
+        installed_packages = self.manager.installed_packages
         available_package_list = [
-            entry for entry in self.api.get_package_names() if entry not in package_list
+            entry
+            for entry in self.manager.api.get_package_names()
+            if entry not in installed_packages
         ]
-        self.installed_packages_list.Update(package_list)
+        self.installed_packages_list.Update(installed_packages)
         self.available_packages_list.Update(available_package_list)
 
     def navigate_to_thunderstore(self):
@@ -136,7 +124,11 @@ class Application:
             webbrowser.open(self.selection_url)
 
     def update_selection(self, selection):
-        entry = self.api.packages[selection]
+        if selection not in self.manager.api.packages:
+            return
+        if not isinstance(selection, PackageReference):
+            selection = PackageReference.parse(selection)
+        entry = self.manager.api.packages[selection.without_version]
         version = entry.versions.latest
         self.last_selection = entry
         self.last_selection_latest_version = version
@@ -149,22 +141,25 @@ class Application:
         )
         self.selection_url = entry.package_url
 
-    def install_mod(self, mod_name):
-        mod_entry = self.api.packages.get(mod_name, None)
-        if mod_entry:
-            last_version = mod_entry.versions.latest
-            for dependency in last_version.dependencies:
-                if not dependency.is_same_package("bbepis-BepInExPack"):
-                    self.install_mod(dependency[:-6])
+    def install_mod(self, package_reference):
+        reference = PackageReference.parse(package_reference)
+        if reference not in self.manager.api.packages:
+            return
+        package = self.manager.api.packages[reference]
 
-            self.mod_manager.download_and_install(
-                owner=mod_entry.owner,
-                name=mod_entry.name,
-                version=last_version.version_number,
-            )
+        if reference.version:
+            version = package
+        else:
+            version = package.versions.latest
+
+        for dependency in version.dependencies:
+            if not dependency.is_same_package("bbepis-BepInExPack"):
+                self.install_mod(dependency)
+
+        self.manager.download_and_install_package(version.package_reference)
 
     def full_refresh(self):
-        self.api.update_packages()
+        self.manager.api.update_packages()
         self.refresh_installed_mods()
 
     def update(self, event, values):
@@ -196,7 +191,7 @@ class Application:
             self.update_selection(available_selection_change)
 
         if isntalled_selection_change:
-            if selection in self.api.packages:
+            if selection in self.manager.api.packages:
                 self.update_selection(selection)
 
         thunderstore_event = "View on Thunderstore"
@@ -206,8 +201,8 @@ class Application:
         install_event = "Install"
         if event == install_event and self.last_event != install_event:
             self.progress_bar.UpdateBar(0, 1000)
-            for index, mod_name in enumerate(values[0]):
-                self.install_mod(mod_name)
+            for index, reference in enumerate(values[0]):
+                self.install_mod(reference)
                 self.progress_bar.UpdateBar(float(index) / len(values[0]) * 1000, 1000)
             self.progress_bar.UpdateBar(1000, 1000)
             self.refresh_installed_mods()
@@ -215,8 +210,8 @@ class Application:
         uninstall_event = "Uninstall"
         if event == uninstall_event and self.last_event != uninstall_event:
             self.progress_bar.UpdateBar(0, 1000)
-            for index, mod_name in enumerate(values[1]):
-                self.mod_manager.uninstall_package(mod_name)
+            for index, reference in enumerate(values[1]):
+                self.manager.uninstall_package(reference)
                 self.progress_bar.UpdateBar(float(index) / len(values[1]) * 1000, 1000)
             self.progress_bar.UpdateBar(1000, 1000)
             self.refresh_installed_mods()
@@ -227,15 +222,10 @@ class Application:
             self.full_refresh()
             self.progress_bar.UpdateBar(1000, 1000)
 
-        bepinex_install_event = "Update BepInEx"
-        if event == bepinex_install_event and self.last_event != bepinex_install_event:
-            self.progress_bar.UpdateBar(0, 1000)
-            self.mod_manager.update_bepinex()
-            self.progress_bar.UpdateBar(1000, 1000)
-
         export_event = "Export"
         if event == export_event and self.last_event != export_event:
-            sg.PopupScrolled(self.mod_manager.export_json())
+            installed = [str(x) for x in self.manager.installed_packages]
+            sg.PopupScrolled(json.dumps(installed))
 
         import_event = "Import"
         if event == import_event and self.last_event != import_event:
@@ -257,8 +247,12 @@ class Application:
 
         self.progress_bar.UpdateBar(0, 1000)
         for index, entry in enumerate(mods_to_install):
-            mod_info = self.mod_manager.split_full_version_name(entry)
-            self.mod_manager.download_and_install(*mod_info)
+            try:
+                reference = PackageReference.parse(entry)
+            except Exception:
+                sg.Popup("Invalid mod configuration supplied")
+                return
+            self.manager.download_and_install_package(reference)
             self.progress_bar.UpdateBar(
                 float(index) / len(mods_to_install) * 1000, 1000
             )

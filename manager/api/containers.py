@@ -86,7 +86,7 @@ class Packages(PackageContainer):
 
     def __contains__(self, item) -> bool:
         item = self._handle_key(item)
-        if item.version:
+        if item.version and item.without_version in self.packages:
             return item in self.packages[item.without_version].versions
         return item in self.packages
 
@@ -109,3 +109,7 @@ class PackageVersions(PackageContainer):
     def latest(self):
         ordered = sorted(self.values(), key=lambda version: version.version_number)
         return ordered[-1]
+
+    def __repr__(self):
+        packages = ", ".join([str(x.package_reference) for x in self])
+        return f"[{packages}]"

@@ -21,13 +21,18 @@ class PackageReference:
 
     def __str__(self) -> str:
         if self.version:
-            version = ".".join(str(x) for x in self.version.version)
-            return f"{self.namespace}-{self.name}-{version}"
+            return f"{self.namespace}-{self.name}-{self.version_str}"
         else:
             return f"{self.namespace}-{self.name}"
 
     def __repr__(self) -> str:
         return f"<PackageReference: {str(self)}>"
+
+    @property
+    def version_str(self):
+        if self.version is not None:
+            return ".".join(str(x) for x in self.version.version)
+        return ""
 
     def is_same_package(self, other) -> bool:
         """
@@ -71,7 +76,7 @@ class PackageReference:
         return hash(str(self))
 
     @classmethod
-    def parse(cls, reference_string) -> PackageReference:
+    def parse(cls, unparsed) -> PackageReference:
         """
         - Packages references are in format {namespace}-{name}-{version}
         - Namespace may contain dashes, whereas name and version can not
@@ -80,24 +85,26 @@ class PackageReference:
         This means we must parse the reference string backwards, as there is no
         good way to know when the namespace ends and the package name starts.
 
-        :param str reference_string: The package reference string
+        :param str unparsed: The package reference string
         :return: A parsed PackageReferenced object
         :rtype: PackageReference
         :raises ValueError: If the reference string is in an invalid format
         """
+        if isinstance(unparsed, PackageReference):
+            return unparsed
 
-        version_string = reference_string.split("-")[-1]
+        version_string = unparsed.split("-")[-1]
         version = None
         if version_string.count(".") > 0:
-            if reference_string.count(".") != 2:
+            if unparsed.count(".") != 2:
                 raise ValueError("Invalid package reference string")
-            if reference_string.count("-") < 2:
+            if unparsed.count("-") < 2:
                 raise ValueError("Invalid package reference string")
             version = StrictVersion(version_string)
-            reference_string = reference_string[: -(len(version_string) + 1)]
+            unparsed = unparsed[: -(len(version_string) + 1)]
 
-        name = reference_string.split("-")[-1]
-        namespace = "-".join(reference_string.split("-")[:-1])
+        name = unparsed.split("-")[-1]
+        namespace = "-".join(unparsed.split("-")[:-1])
 
         if not (namespace and name):
             raise ValueError("Invalid package reference string")
