@@ -1,7 +1,9 @@
 import wx
+import requests_async
 
 from wxasync import WxAsyncApp, AsyncBind
 from asyncio.events import get_event_loop
+from io import BytesIO
 
 from ..system.manager import ModManager, ModManagerConfiguration
 from ..utils.log import log_exception
@@ -52,6 +54,12 @@ class ObjectList:
 
         return selections
 
+    def get_first_selection(self):
+        selection = self.element.GetFirstSelected()
+        if selection == -1:
+            return None
+        return self.objects[selection]
+
     def resize_columns(self):
         width, height = self.element.GetClientSize()
         column_width = int(float(width) / len(self.column_labels))
@@ -99,11 +107,11 @@ class Application:
         self.manager = ModManager(self.configuration)
         self.bind_events()
 
-    def handle_remote_mod_list_select(self, event=None):
-        selections = self.remote_mod_list.get_selected_objects()
-        if not selections:
+    async def handle_remote_mod_list_select(self, event=None):
+        selection = self.remote_mod_list.get_first_selection()
+        if not selection:
             return
-        selection = self.manager.resolve_package_metadata(selections[0])
+        selection = self.manager.resolve_package_metadata(selection)
         self.main_frame.selection_title.SetLabel(selection.name)
         self.main_frame.selection_title.Wrap(160)
 
@@ -118,6 +126,24 @@ class Application:
         self.main_frame.selection_download_count.SetLabel(downloads_text)
         self.main_frame.selection_download_count.Wrap(240)
 
+        # TODO: Add caching
+        bitmap = None
+        if selection.icon_url:
+            try:
+                response = await requests_async.get(selection.icon_url)
+                image_data = BytesIO(response.content)
+                bitmap = wx.Image(image_data).ConvertToBitmap()
+            except Exception as e:
+                print(e)
+
+        if bitmap is None:
+            bitmap = wx.Bitmap("resources\\icon-unknown.png")
+
+        current_selection = self.remote_mod_list.get_first_selection()
+        current_meta = self.manager.resolve_package_metadata(current_selection)
+        if current_meta.package_reference == selection.package_reference:
+            self.main_frame.selection_icon_bitmap.SetBitmap(bitmap)
+
     def bind_events(self):
         AsyncBind(
             wx.EVT_BUTTON,
@@ -127,8 +153,10 @@ class Application:
         self.main_frame.downloaded_mods_group_version_checkbox.Bind(
             wx.EVT_CHECKBOX, self.refresh_downloaded_mod_list
         )
-        self.main_frame.mod_list_list.Bind(
-            wx.EVT_LIST_ITEM_SELECTED, self.handle_remote_mod_list_select
+        AsyncBind(
+            wx.EVT_LIST_ITEM_SELECTED,
+            self.handle_remote_mod_list_select,
+            self.main_frame.mod_list_list,
         )
 
     async def refresh_remote_mod_list(self, event=None):
@@ -165,5 +193,6 @@ class Application:
         self.main_frame.Show()
         self.refresh_installed_mod_list()
         self.refresh_downloaded_mod_list()
+        wx.Log.SetActiveTarget(wx.LogStderr())
         loop = get_event_loop()
         loop.run_until_complete(self.app.MainLoop())
