@@ -1,5 +1,8 @@
 import wx
 
+from wxasync import WxAsyncApp
+from asyncio.events import get_event_loop
+
 from ..system.manager import ModManager, ModManagerConfiguration
 from ..utils.log import log_exception
 
@@ -67,7 +70,7 @@ class TestMod:
 
 class Application:
     def __init__(self):
-        self.app = wx.App(0)
+        self.app = WxAsyncApp()
         self.main_frame = MainFrame(None)
         self.remote_mod_list = ObjectList(
             element=self.main_frame.mod_list_list,
@@ -146,4 +149,5 @@ class Application:
         self.main_frame.Show()
         self.refresh_installed_mod_list()
         self.refresh_downloaded_mod_list()
-        self.app.MainLoop()
+        loop = get_event_loop()
+        loop.run_until_complete(self.app.MainLoop())
