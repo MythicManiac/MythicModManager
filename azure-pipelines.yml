@@ -20,8 +20,11 @@ steps:
   displayName: 'Use Python $(python.version)'
 
 - script: |
-    sudo apt-get update && sudo apt-get install python3-tk -y
-    python -m pip install --upgrade pip
+    sudo apt-get update && sudo apt-get install -y python3-tk libsdl1.2debian
+    python -m pip install -U pip
+    pip install -U \
+      -f https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-16.04 \
+      wxPython
     pip install -r requirements.txt
   displayName: 'Install dependencies'
 
