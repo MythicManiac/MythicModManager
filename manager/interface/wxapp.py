@@ -150,6 +150,17 @@ class Application:
         if self.current_selection == selection_meta:
             self.main_frame.selection_icon_bitmap.SetBitmap(bitmap)
 
+    async def handle_uninstall_managed_package(self, event=None):
+        selections = self.installed_mod_list.get_selected_objects()
+        for selection in selections:
+            meta = self.manager.resolve_package_metadata(selection)
+            self.manager.uninstall_package(meta.package_reference)
+        if selections:
+            self.refresh_installed_mod_list()
+
+    async def handle_delete_cached_package(self, event=None):
+        pass
+
     def bind_events(self):
         AsyncBind(
             wx.EVT_BUTTON,
@@ -173,6 +184,11 @@ class Application:
             wx.EVT_LIST_ITEM_SELECTED,
             self.handle_remote_mod_list_select,
             self.main_frame.mod_list_list,
+        )
+        AsyncBind(
+            wx.EVT_BUTTON,
+            self.handle_uninstall_managed_package,
+            self.main_frame.installed_mods_uninstall_button,
         )
 
     async def refresh_remote_mod_list(self, event=None):
