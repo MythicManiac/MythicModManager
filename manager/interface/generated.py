@@ -18,7 +18,7 @@ class MainFrame(wx.Frame):
         # begin wxGlade: MainFrame.__init__
         kwds["style"] = kwds.get("style", 0) | wx.DEFAULT_FRAME_STYLE
         wx.Frame.__init__(self, *args, **kwds)
-        self.SetSize((942, 624))
+        self.SetSize((859, 624))
         self.main_content_notebook = wx.Notebook(self, wx.ID_ANY)
         self.manager_tab = wx.Panel(self.main_content_notebook, wx.ID_ANY)
         self.button_4 = wx.Button(self.manager_tab, wx.ID_ANY, "Uninstall")
@@ -42,6 +42,12 @@ class MainFrame(wx.Frame):
             style=wx.LC_HRULES | wx.LC_REPORT | wx.LC_VRULES,
         )
         self.mod_list_tab = wx.Panel(self.main_content_notebook, wx.ID_ANY)
+        self.mod_list_refresh_button = wx.Button(
+            self.mod_list_tab, wx.ID_ANY, "Refresh"
+        )
+        self.mod_list_install_button = wx.Button(
+            self.mod_list_tab, wx.ID_ANY, "Install Selected"
+        )
         self.mod_list_search = wx.SearchCtrl(self.mod_list_tab, wx.ID_ANY, "")
         self.mod_list_list = wx.ListCtrl(
             self.mod_list_tab,
@@ -104,7 +110,7 @@ class MainFrame(wx.Frame):
         self.mod_list_list.AppendColumn("Name", format=wx.LIST_FORMAT_LEFT, width=115)
         self.mod_list_list.AppendColumn("Author", format=wx.LIST_FORMAT_LEFT, width=102)
         self.mod_list_list.AppendColumn(
-            "Description", format=wx.LIST_FORMAT_LEFT, width=278
+            "Description", format=wx.LIST_FORMAT_LEFT, width=194
         )
         self.mod_list_list.AppendColumn("Version", format=wx.LIST_FORMAT_LEFT, width=-1)
         self.mod_list_list.AppendColumn(
@@ -130,6 +136,7 @@ class MainFrame(wx.Frame):
         about_sizer = wx.BoxSizer(wx.HORIZONTAL)
         job_queue_sizer = wx.BoxSizer(wx.VERTICAL)
         mod_list_sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer_1 = wx.BoxSizer(wx.HORIZONTAL)
         manager_sizer = wx.BoxSizer(wx.VERTICAL)
         downloaded_mods_sizer = wx.BoxSizer(wx.VERTICAL)
         downloaded_mods_buttons_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -176,6 +183,9 @@ class MainFrame(wx.Frame):
         downloaded_mods_sizer.Add(self.downloaded_mods_list, 1, wx.EXPAND, 0)
         manager_sizer.Add(downloaded_mods_sizer, 1, wx.EXPAND, 0)
         self.manager_tab.SetSizer(manager_sizer)
+        sizer_1.Add(self.mod_list_refresh_button, 1, wx.EXPAND, 0)
+        sizer_1.Add(self.mod_list_install_button, 1, wx.EXPAND, 0)
+        mod_list_sizer.Add(sizer_1, 0, wx.EXPAND, 0)
         mod_list_sizer.Add(self.mod_list_search, 0, wx.EXPAND, 0)
         mod_list_sizer.Add(self.mod_list_list, 1, wx.EXPAND, 0)
         self.mod_list_tab.SetSizer(mod_list_sizer)
@@ -239,7 +249,7 @@ class MainFrame(wx.Frame):
             self.selection_thunderstore_button, 1, wx.EXPAND, 0
         )
         selection_info_content_sizer.Add(selection_info_buttons_sizer, 0, wx.EXPAND, 0)
-        selection_info_sizer.Add(selection_info_content_sizer, 0, wx.EXPAND, 0)
+        selection_info_sizer.Add(selection_info_content_sizer, 1, wx.EXPAND, 0)
         main_content_sizer.Add(selection_info_sizer, 0, wx.EXPAND, 0)
         root_sizer.Add(main_content_sizer, 95, wx.EXPAND, 0)
         progress_bars_sizer.Add(self.progress_bar_big, 1, wx.EXPAND, 0)
