@@ -1,11 +1,9 @@
 import wx
-import requests_async
 
 from wxasync import WxAsyncApp, AsyncBind
 from asyncio.events import get_event_loop
-from io import BytesIO
 
-from ..system.manager import ModManager, ModManagerConfiguration
+from ..system.manager import ModManager, ModManagerConfiguration, PackageMetadata
 from ..utils.log import log_exception
 
 from .generated import MainFrame
@@ -105,43 +103,51 @@ class Application:
             log_path="logs/",
         )
         self.manager = ModManager(self.configuration)
+        self.current_selection = PackageMetadata.empty()
         self.bind_events()
 
     async def handle_remote_mod_list_select(self, event=None):
-        selection = self.remote_mod_list.get_first_selection()
+        await self.handle_selection_update(self.remote_mod_list.get_first_selection())
+
+    async def handle_installed_mod_list_select(self, event=None):
+        await self.handle_selection_update(
+            self.installed_mod_list.get_first_selection()
+        )
+
+    async def handle_downloaded_mod_list_select(self, event=None):
+        await self.handle_selection_update(
+            self.downloaded_mod_list.get_first_selection()
+        )
+
+    async def handle_selection_update(self, selection):
         if not selection:
             return
-        selection = self.manager.resolve_package_metadata(selection)
-        self.main_frame.selection_title.SetLabel(selection.name)
+        selection_meta = self.manager.resolve_package_metadata(selection)
+        self.current_selection = selection_meta
+        self.main_frame.selection_title.SetLabel(selection_meta.name)
         self.main_frame.selection_title.Wrap(160)
 
-        self.main_frame.selection_description.SetLabel(selection.description)
+        self.main_frame.selection_description.SetLabel(selection_meta.description)
         self.main_frame.selection_description.Wrap(240)
 
-        version_text = f"Selected Version: v{selection.version}"
+        version_text = f"Selected Version: v{selection_meta.version}"
         self.main_frame.selection_version.SetLabel(version_text)
         self.main_frame.selection_version.Wrap(240)
 
-        downloads_text = f"Downloads: {selection.downloads}"
+        downloads_text = f"Downloads: {selection_meta.downloads}"
         self.main_frame.selection_download_count.SetLabel(downloads_text)
         self.main_frame.selection_download_count.Wrap(240)
 
-        # TODO: Add caching
         bitmap = None
-        if selection.icon_url:
-            try:
-                response = await requests_async.get(selection.icon_url)
-                image_data = BytesIO(response.content)
-                bitmap = wx.Image(image_data).ConvertToBitmap()
-            except Exception as e:
-                print(e)
+
+        icon_data = await selection_meta.get_icon_bytes()
+        if icon_data:
+            bitmap = wx.Image(icon_data).ConvertToBitmap()
 
         if bitmap is None:
             bitmap = wx.Bitmap("resources\\icon-unknown.png")
 
-        current_selection = self.remote_mod_list.get_first_selection()
-        current_meta = self.manager.resolve_package_metadata(current_selection)
-        if current_meta.package_reference == selection.package_reference:
+        if self.current_selection == selection_meta:
             self.main_frame.selection_icon_bitmap.SetBitmap(bitmap)
 
     def bind_events(self):
@@ -152,6 +158,16 @@ class Application:
         )
         self.main_frame.downloaded_mods_group_version_checkbox.Bind(
             wx.EVT_CHECKBOX, self.refresh_downloaded_mod_list
+        )
+        AsyncBind(
+            wx.EVT_LIST_ITEM_SELECTED,
+            self.handle_installed_mod_list_select,
+            self.main_frame.installed_mods_list,
+        )
+        AsyncBind(
+            wx.EVT_LIST_ITEM_SELECTED,
+            self.handle_downloaded_mod_list_select,
+            self.main_frame.downloaded_mods_list,
         )
         AsyncBind(
             wx.EVT_LIST_ITEM_SELECTED,

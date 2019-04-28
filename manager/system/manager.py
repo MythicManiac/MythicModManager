@@ -1,11 +1,15 @@
 import os
 import requests
+import requests_async
 import shutil
+import json
 
 from pathlib import Path
+from io import BytesIO
 
-from manager.api.types import PackageReference
-from manager.api.thunderstore import ThunderstoreAPI
+from ..api.types import PackageReference
+from ..api.thunderstore import ThunderstoreAPI
+from ..utils.log import log_exception
 
 from zipfile import ZipFile
 
@@ -27,13 +31,23 @@ class ModManagerConfiguration:
 
 
 class PackageMetadata:
-    def __init__(self, namespace, name, version, description, downloads, icon_url):
+    def __init__(
+        self,
+        namespace,
+        name,
+        version,
+        description,
+        downloads,
+        icon_url=None,
+        icon_data=None,
+    ):
         self.namespace = namespace
         self.name = name
         self.version = version
         self.description = description
         self.downloads = downloads
         self.icon_url = icon_url
+        self.icon_data = icon_data
 
     @property
     def package_reference(self):
@@ -65,6 +79,26 @@ class PackageMetadata:
             downloads="",
         )
 
+    async def get_icon_bytes(self):
+        if self.icon_data:
+            return self.icon_data
+
+        if not self.icon_url:
+            return None
+
+        try:
+            # TODO: Add caching
+            response = await requests_async.get(self.icon_url)
+            return BytesIO(response.content)
+        except Exception as e:
+            log_exception(e)
+            return None
+
+    def __eq__(self, other):
+        if isinstance(other, PackageMetadata):
+            return self.package_reference == other.package_reference
+        return super().__eq__(other)
+
 
 class ModManager:
     def __init__(self, configuration):
@@ -87,8 +121,40 @@ class ModManager:
             PackageReference.parse(x.stem) for x in self.mod_cache_path.glob("*.zip")
         ]
 
-    def get_installed_package_metadata(self):
-        pass
+    def get_installed_package_metadata(self, reference):
+        managed_path = self.get_managed_package_path(reference)
+        manifest_path = managed_path / "manifest.json"
+        icon_path = managed_path / "icon.png"
+        with open(manifest_path, "rb") as f:
+            data = json.loads(f.read().decode("utf-8-sig"))
+        with open(icon_path, "rb") as f:
+            icon_data = BytesIO(f.read())
+        return PackageMetadata(
+            namespace=reference.namespace,
+            name=reference.name,
+            version=reference.version_str,
+            description=data.get("description", ""),
+            downloads="Unknown",
+            icon_data=icon_data,
+        )
+
+    def get_cached_package_metadata(self, reference):
+        zip_path = self.get_package_cache_path(reference)
+
+        with ZipFile(zip_path) as unzip:
+            if unzip.testzip():
+                return PackageMetadata.empty()
+            data = json.loads(unzip.read("manifest.json").decode("utf-8-sig"))
+            icon_data = BytesIO(unzip.read("icon.png"))
+
+        return PackageMetadata(
+            namespace=reference.namespace,
+            name=reference.name,
+            version=reference.version_str,
+            description=data.get("description", ""),
+            downloads="Unknown",
+            icon_data=icon_data,
+        )
 
     def resolve_package_metadata(self, reference):
         """
@@ -101,8 +167,34 @@ class ModManager:
             reference = PackageReference.parse(reference)
         if reference in self.api.packages:
             return PackageMetadata.from_package(self.api.packages[reference])
-        if reference in self.installed_packages:
+
+        # TODO: Refactor and use a package container
+        installed_packages = self.installed_packages
+        if not reference.version:
+            newest = None
+            for version in installed_packages:
+                if not version.is_same_package(reference):
+                    continue
+                if newest is None or version > newest:
+                    newest = version
+            if newest:
+                return self.get_installed_package_metadata(newest)
+
+        if reference in installed_packages:
             return self.get_installed_package_metadata(reference)
+
+        # TODO: Refactor and use a package container
+        cached_packages = self.cached_packages
+        if not reference.version:
+            newest = None
+            for version in cached_packages:
+                if not version.is_same_package(reference):
+                    continue
+                if newest is None or version > newest:
+                    newest = version
+            if newest:
+                return self.get_cached_package_metadata(newest)
+
         if reference in self.cached_packages:
             return self.get_cached_package_metadata(reference)
         return PackageMetadata.empty()
@@ -141,6 +233,7 @@ class ModManager:
 
         with ZipFile(package_path) as unzip:
             if unzip.testzip():
+                # TODO: Handle better
                 raise RuntimeError("Corrupted zip file")
             unzip.extractall(target_dir)
         print("Done!")

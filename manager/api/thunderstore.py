@@ -13,6 +13,7 @@ class ThunderstoreAPI:
         self.package_url = parse.urljoin(self.api_url, "package/")
         self.packages = Packages()
 
+    # TODO: Deprecate
     def update_packages(self):
         data = requests.get(self.package_url).json()
         self.update_packages_with_data(data)
