@@ -6,6 +6,7 @@ from asyncio.events import get_event_loop
 
 from ..system.manager import ModManager, ModManagerConfiguration, PackageMetadata
 from ..utils.log import log_exception
+from ..api.types import PackageReference
 
 from .generated import MainFrame
 
@@ -234,17 +235,52 @@ class Application:
             self.handle_installed_mod_list_export,
             self.main_frame.installed_mods_export_button,
         )
+        AsyncBind(
+            wx.EVT_BUTTON,
+            self.handle_installed_mod_list_import,
+            self.main_frame.installed_mods_import_button,
+        )
 
     async def handle_installed_mod_list_export(self, event=None):
         CopyableDialog(
             self.main_frame,
             "Installed mods export",
             json.dumps([str(x) for x in self.manager.installed_packages]),
-            # wx.OK | wx.ICON_INFORMATION,
         )
 
+    def attempt_import(self, raw_data):
+        try:
+            references = json.loads(raw_data)
+        except Exception:
+            wx.MessageBox(
+                "Failed to import mod configuration. Is it proper JSON?",
+                "Error",
+                wx.OK | wx.ICON_ERROR,
+            )
+            return
+
+        try:
+            references = [PackageReference.parse(x) for x in references]
+        except Exception:
+            wx.MessageBox(
+                "Failed to parse some of the mod names and could not import.",
+                "Error",
+                wx.OK | wx.ICON_ERROR,
+            )
+            return
+
+        for reference in references:
+            self.manager.download_and_install_package(reference)
+
     async def handle_installed_mod_list_import(self, event=None):
-        pass
+        dialog = wx.TextEntryDialog(
+            self.main_frame, "Enter mod configuration", "Installed mods import"
+        )
+        if dialog.ShowModal() == wx.ID_OK:
+            self.attempt_import(dialog.GetValue())
+            self.refresh_installed_mod_list()
+            self.refresh_downloaded_mod_list()
+        dialog.Destroy()
 
     async def handle_mod_list_install(self, event=None):
         selections = self.remote_mod_list.get_selected_objects()
