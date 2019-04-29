@@ -183,7 +183,7 @@ class Application:
     def bind_events(self):
         AsyncBind(
             wx.EVT_BUTTON,
-            self.refresh_remote_mod_list,
+            self.handle_mod_list_refresh,
             self.main_frame.mod_list_refresh_button,
         )
         self.main_frame.downloaded_mods_group_version_checkbox.Bind(
@@ -219,8 +219,22 @@ class Application:
             self.handle_downloaded_mod_list_delete,
             self.main_frame.downloaded_mods_delete_button,
         )
+        AsyncBind(
+            wx.EVT_BUTTON,
+            self.handle_mod_list_install,
+            self.main_frame.mod_list_install_button,
+        )
 
-    async def refresh_remote_mod_list(self, event=None):
+    async def handle_mod_list_install(self, event=None):
+        selections = self.remote_mod_list.get_selected_objects()
+        for selection in selections:
+            meta = self.manager.resolve_package_metadata(selection)
+            self.manager.download_and_install_package(meta.package_reference)
+        if selections:
+            self.refresh_downloaded_mod_list()
+            self.refresh_installed_mod_list()
+
+    async def handle_mod_list_refresh(self, event=None):
         if event:
             event.GetEventObject().Disable()
         try:
