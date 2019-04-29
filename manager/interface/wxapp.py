@@ -172,8 +172,13 @@ class Application:
         if selections:
             self.refresh_installed_mod_list()
 
-    async def handle_delete_cached_package(self, event=None):
-        pass
+    async def handle_downloaded_mod_list_delete(self, event=None):
+        selections = self.downloaded_mod_list.get_selected_objects()
+        for selection in selections:
+            meta = self.manager.resolve_package_metadata(selection)
+            self.manager.delete_package(meta.package_reference)
+        if selections:
+            self.refresh_downloaded_mod_list()
 
     def bind_events(self):
         AsyncBind(
@@ -208,6 +213,11 @@ class Application:
             wx.EVT_BUTTON,
             self.handle_downloaded_mod_list_install,
             self.main_frame.downloaded_mods_install_button,
+        )
+        AsyncBind(
+            wx.EVT_BUTTON,
+            self.handle_downloaded_mod_list_delete,
+            self.main_frame.downloaded_mods_delete_button,
         )
 
     async def refresh_remote_mod_list(self, event=None):

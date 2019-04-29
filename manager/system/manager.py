@@ -233,6 +233,17 @@ class ModManager:
                     f.write(chunk)
         print("Done!")
 
+    def delete_package(self, reference):
+        if reference.version:
+            print(f"Deleting {reference}... ", end="")
+            package_path = self.get_package_cache_path(reference)
+            os.remove(package_path)
+            print("Done!")
+        else:
+            for package in self.installed_packages:
+                if package.is_same_package(reference):
+                    self.delete_package(package)
+
     def install_extract_package(self, reference):
         pass  # TODO: Implement
 
