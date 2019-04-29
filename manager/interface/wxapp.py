@@ -1,4 +1,5 @@
 import wx
+import json
 
 from wxasync import WxAsyncApp, AsyncBind
 from asyncio.events import get_event_loop
@@ -65,13 +66,17 @@ class ObjectList:
             self.element.SetColumnWidth(index, column_width)
 
 
-class TestMod:
-    def __init__(self, name, author, description, version, downloads):
-        self.name = name
-        self.author = author
-        self.description = description
-        self.version = version
-        self.downloads = downloads
+class CopyableDialog(wx.Dialog):
+    def __init__(self, parent, title, text):
+        wx.Dialog.__init__(self, parent, title=title)
+        text = wx.TextCtrl(
+            parent=self,
+            value=text,
+            style=(wx.TE_READONLY | wx.TE_MULTILINE | wx.TE_BESTWRAP),
+        )
+        text.SetSelection(-1, -1)
+        self.ShowModal()
+        self.Destroy()
 
 
 class Application:
@@ -224,6 +229,22 @@ class Application:
             self.handle_mod_list_install,
             self.main_frame.mod_list_install_button,
         )
+        AsyncBind(
+            wx.EVT_BUTTON,
+            self.handle_installed_mod_list_export,
+            self.main_frame.installed_mods_export_button,
+        )
+
+    async def handle_installed_mod_list_export(self, event=None):
+        CopyableDialog(
+            self.main_frame,
+            "Installed mods export",
+            json.dumps([str(x) for x in self.manager.installed_packages]),
+            # wx.OK | wx.ICON_INFORMATION,
+        )
+
+    async def handle_installed_mod_list_import(self, event=None):
+        pass
 
     async def handle_mod_list_install(self, event=None):
         selections = self.remote_mod_list.get_selected_objects()
