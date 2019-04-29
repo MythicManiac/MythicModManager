@@ -38,8 +38,10 @@ class PackageMetadata:
         version,
         description,
         downloads,
+        dependencies,
         icon_url=None,
         icon_data=None,
+        thunderstore_url=None,
     ):
         self.namespace = namespace
         self.name = name
@@ -48,6 +50,7 @@ class PackageMetadata:
         self.downloads = downloads
         self.icon_url = icon_url
         self.icon_data = icon_data
+        self.dependencies = dependencies
 
     @property
     def package_reference(self):
@@ -66,6 +69,7 @@ class PackageMetadata:
             description=package.description,
             icon_url=package.icon,
             downloads=package.downloads,
+            dependencies=package.dependencies,
         )
 
     @classmethod
@@ -77,6 +81,7 @@ class PackageMetadata:
             description="",
             icon_url="",  # TODO: Add unknown icon,
             downloads="",
+            dependencies=[],
         )
 
     async def get_icon_bytes(self):
@@ -136,6 +141,9 @@ class ModManager:
             description=data.get("description", ""),
             downloads="Unknown",
             icon_data=icon_data,
+            dependencies=[
+                PackageReference.parse(x) for x in data.get("dependencies", [])
+            ],
         )
 
     def get_cached_package_metadata(self, reference):
@@ -154,6 +162,9 @@ class ModManager:
             description=data.get("description", ""),
             downloads="Unknown",
             icon_data=icon_data,
+            dependencies=[
+                PackageReference.parse(x) for x in data.get("dependencies", [])
+            ],
         )
 
     def get_newest_from(self, package, references):
@@ -244,7 +255,13 @@ class ModManager:
         # TODO: Add checking for managed vs. extract package install
         self.install_managed_package(reference)
 
+        # TODO: Resolve dependencies in a safer way
+        meta = self.resolve_package_metadata(reference)
+        for dependency in meta.dependencies:
+            self.download_and_install_package(dependency)
+
     def uninstall_package(self, reference):
+        # TODO: Also uninstall dependants
         if reference.version:
             print(f"Uninstalling {reference}... ", end="")
             package_path = self.get_managed_package_path(reference)
