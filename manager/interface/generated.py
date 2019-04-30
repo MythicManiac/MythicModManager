@@ -25,7 +25,7 @@ class MainFrame(wx.Frame):
             self.manager_tab, wx.ID_ANY, "Uninstall"
         )
         self.installed_mods_update_button = wx.Button(
-            self.manager_tab, wx.ID_ANY, "Check for updates"
+            self.manager_tab, wx.ID_ANY, "Update installed mods"
         )
         self.installed_mods_export_button = wx.Button(
             self.manager_tab, wx.ID_ANY, "Export"

@@ -209,6 +209,18 @@ class Application:
             meta = self.manager.resolve_package_metadata(selection)
             await self.add_job(DeletePackage, meta.package_reference)
 
+    async def handle_instaled_mod_list_update(self, event=None):
+        self.main_frame.installed_mods_update_button.Disable()
+        await self.handle_mod_list_refresh()
+        for package in self.manager.installed_packages:
+            package = package.without_version
+            if package not in self.manager.api.packages:
+                continue
+            package = self.manager.api.packages[package]
+            latest = package.versions.latest.package_reference
+            await self.add_job(DownloadAndInstallPackage, latest)
+        self.main_frame.installed_mods_update_button.Enable()
+
     def handle_selection_thunderstore_button(self, event=None):
         meta = self.manager.resolve_package_metadata(self.current_selection)
         if meta.thunderstore_url:
@@ -270,6 +282,11 @@ class Application:
             wx.EVT_BUTTON,
             self.handle_installed_mod_list_import,
             self.main_frame.installed_mods_import_button,
+        )
+        AsyncBind(
+            wx.EVT_BUTTON,
+            self.handle_instaled_mod_list_update,
+            self.main_frame.installed_mods_update_button,
         )
 
     async def handle_installed_mod_list_export(self, event=None):
