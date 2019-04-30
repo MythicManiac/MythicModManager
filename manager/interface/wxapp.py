@@ -1,5 +1,6 @@
 import wx
 import json
+import webbrowser
 
 from wxasync import WxAsyncApp, AsyncBind, StartCoroutine
 from asyncio.events import get_event_loop
@@ -129,6 +130,7 @@ class Application:
         self.main_frame.selection_title.SetLabel("")
         self.main_frame.selection_version.SetLabel("")
         self.main_frame.selection_download_count.SetLabel("")
+        self.main_frame.selection_thunderstore_button.Disable()
         self.bind_events()
 
     def refresh_job_list(self):
@@ -166,6 +168,11 @@ class Application:
         self.main_frame.selection_download_count.SetLabel(downloads_text)
         self.main_frame.selection_download_count.Wrap(240)
 
+        if selection_meta.thunderstore_url:
+            self.main_frame.selection_thunderstore_button.Enable()
+        else:
+            self.main_frame.selection_thunderstore_button.Disable()
+
         bitmap = None
 
         icon_data = await selection_meta.get_icon_bytes()
@@ -202,6 +209,11 @@ class Application:
             meta = self.manager.resolve_package_metadata(selection)
             await self.add_job(DeletePackage, meta.package_reference)
 
+    def handle_selection_thunderstore_button(self, event=None):
+        meta = self.manager.resolve_package_metadata(self.current_selection)
+        if meta.thunderstore_url:
+            webbrowser.open(meta.thunderstore_url)
+
     def bind_events(self):
         AsyncBind(
             wx.EVT_BUTTON,
@@ -210,6 +222,9 @@ class Application:
         )
         self.main_frame.downloaded_mods_group_version_checkbox.Bind(
             wx.EVT_CHECKBOX, self.refresh_downloaded_mod_list
+        )
+        self.main_frame.selection_thunderstore_button.Bind(
+            wx.EVT_BUTTON, self.handle_selection_thunderstore_button
         )
         AsyncBind(
             wx.EVT_LIST_ITEM_SELECTED,

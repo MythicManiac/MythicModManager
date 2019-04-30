@@ -45,6 +45,7 @@ class PackageMetadata:
         self.icon_url = icon_url
         self.icon_data = icon_data
         self.dependencies = dependencies
+        self.thunderstore_url = thunderstore_url
 
     @property
     def package_reference(self):
@@ -53,7 +54,7 @@ class PackageMetadata:
         )
 
     @classmethod
-    def from_package(cls, package):
+    def from_package(cls, package, thunderstore_url):
         if hasattr(package, "versions"):
             package = package.versions.latest
         return cls(
@@ -64,6 +65,7 @@ class PackageMetadata:
             icon_url=package.icon,
             downloads=package.downloads,
             dependencies=package.dependencies,
+            thunderstore_url=thunderstore_url,
         )
 
     @classmethod
@@ -203,7 +205,8 @@ class ModManager:
         if not isinstance(reference, PackageReference):
             reference = PackageReference.parse(reference)
         if reference in self.api.packages:
-            return PackageMetadata.from_package(self.api.packages[reference])
+            url = self.api.packages[reference.without_version].package_url
+            return PackageMetadata.from_package(self.api.packages[reference], url)
 
         if not reference.version:
             version = self.get_newest_installed(reference)
