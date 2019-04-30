@@ -288,6 +288,9 @@ class Application:
             self.handle_instaled_mod_list_update,
             self.main_frame.installed_mods_update_button,
         )
+        AsyncBind(
+            wx.EVT_TEXT, self.handle_mod_list_search, self.main_frame.mod_list_search
+        )
 
     async def handle_installed_mod_list_export(self, event=None):
         CopyableDialog(
@@ -331,6 +334,12 @@ class Application:
             await self.attempt_import(dialog.GetValue())
         dialog.Destroy()
 
+    async def handle_mod_list_search(self, event=None):
+        query = event.GetString()
+        if query is None:
+            return
+        await self.update_mod_list_content(query)
+
     async def handle_mod_list_install(self, event=None):
         selections = self.remote_mod_list.get_selected_objects()
         for selection in selections:
@@ -342,10 +351,7 @@ class Application:
             event.GetEventObject().Disable()
         try:
             await self.manager.api.async_update_packages()
-            packages = sorted(
-                self.manager.api.packages.values(), key=lambda entry: entry.name
-            )
-            self.remote_mod_list.update(packages)
+            await self.update_mod_list_content()
         except Exception as e:
             log_exception(e)
             wx.MessageBox(
@@ -355,6 +361,20 @@ class Application:
             )
         if event:
             event.GetEventObject().Enable()
+
+    async def update_mod_list_content(self, query=None):
+        if query is None:
+            query = self.main_frame.mod_list_search.GetValue()
+
+        def matches_query(package):
+            matches_name = query.lower() in str(package.full_name).lower()
+            matches_desc = query.lower() in package.description.lower()
+            return matches_name or matches_desc
+
+        packages = self.manager.api.packages.values()
+        packages = filter(matches_query, packages)
+        packages = sorted(packages, key=lambda entry: entry.name)
+        self.remote_mod_list.update(packages)
 
     def refresh_installed_mod_list(self, event=None):
         packages = sorted(self.manager.installed_packages, key=lambda entry: entry.name)
