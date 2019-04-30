@@ -4,6 +4,7 @@ import webbrowser
 
 from wxasync import WxAsyncApp, AsyncBind, StartCoroutine
 from asyncio.events import get_event_loop
+from pathlib import Path
 
 from ..system.manager import ModManager, ModManagerConfiguration, PackageMetadata
 from ..system.job_manager import JobManager
@@ -14,6 +15,7 @@ from ..system.jobs import (
     DeletePackage,
 )
 from ..utils.log import log_exception
+from ..utils.install_finder import get_install_path
 from ..api.types import PackageReference
 
 from .generated import MainFrame
@@ -132,11 +134,24 @@ class Application:
             columns=("name", "parameters_str"),
             column_labels=("Task", "Parameters"),
         )
+
+        risk_of_rain_path = get_install_path()
+
+        if not risk_of_rain_path:
+            wx.MessageBox(
+                "Failed to detect Risk of Rain 2 path. Add it to config.toml",
+                "Error",
+                wx.OK | wx.ICON_ERROR,
+            )
+            risk_of_rain_path = Path("risk-of-rain-2")
+
         self.configuration = ModManagerConfiguration(
             thunderstore_url="https://thunderstore.io/",
             mod_cache_path="mod-cache/",
-            mod_install_path="risk-of-rain-2/mods/",
-            risk_of_rain_path="risk-of-rain-2/",
+            # mod_install_path="risk-of-rain-2/mods/",
+            # risk_of_rain_path="risk-of-rain-2/",
+            mod_install_path=risk_of_rain_path / "BepInEx" / "plugins",
+            risk_of_rain_path=risk_of_rain_path,
         )
         self.manager = ModManager(self.configuration)
         self.manager.bind_on_install(self.refresh_installed_mod_list)
