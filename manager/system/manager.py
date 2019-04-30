@@ -1,5 +1,4 @@
 import os
-import requests
 import requests_async
 import shutil
 import json
@@ -71,9 +70,9 @@ class PackageMetadata:
     @classmethod
     def empty(cls):
         return cls(
-            namespace="",
+            namespace="None",
             name="No package selected",
-            version="",
+            version="0.0.0",
             description="",
             icon_url="",  # TODO: Add unknown icon,
             downloads="",
@@ -161,11 +160,19 @@ class ModManager:
     def get_cached_package_metadata(self, reference):
         zip_path = self.get_package_cache_path(reference)
 
-        with ZipFile(zip_path) as unzip:
-            if unzip.testzip():
-                return PackageMetadata.empty()
-            data = json.loads(unzip.read("manifest.json").decode("utf-8-sig"))
-            icon_data = BytesIO(unzip.read("icon.png"))
+        try:
+            with ZipFile(zip_path) as unzip:
+                data = json.loads(unzip.read("manifest.json").decode("utf-8-sig"))
+                icon_data = BytesIO(unzip.read("icon.png"))
+        except Exception:
+            return PackageMetadata(
+                namespace=reference.namespace,
+                name=reference.name,
+                version=reference.version_str,
+                description="",
+                downloads="Unknown",
+                dependencies=[],
+            )
 
         return PackageMetadata(
             namespace=reference.namespace,
@@ -178,6 +185,20 @@ class ModManager:
                 PackageReference.parse(x) for x in data.get("dependencies", [])
             ],
         )
+
+    async def validate_cache(self):
+        for package in self.cached_packages:
+            await self.validate_zip_or_delete(package)
+
+    async def validate_zip_or_delete(self, reference):
+        zip_path = self.get_package_cache_path(reference)
+
+        try:
+            with ZipFile(zip_path) as unzip:
+                if unzip.testzip():
+                    raise RuntimeError("Invalid zip")
+        except Exception:
+            await self.delete_package(reference)
 
     def get_newest_from(self, package, references):
         # TODO: Refactor and use a package container
@@ -231,7 +252,7 @@ class ModManager:
     def get_managed_package_path(self, reference):
         return self.mod_install_path / f"{reference}"
 
-    def download_package(self, reference):
+    async def download_package(self, reference, progress):
         download_url = self.api.get_package_download_url(reference)
         print(f"Downloading {reference}... ", end="")
 
@@ -239,11 +260,23 @@ class ModManager:
         if not self.mod_cache_path.exists():
             os.makedirs(self.mod_cache_path)
 
-        with requests.get(download_url, stream=True) as r:
-            r.raise_for_status()
-            with open(target_dir, "wb") as f:
-                for chunk in (x for x in r.iter_content(chunk_size=8192) if x):
+        response = await requests_async.get(download_url, stream=True)
+        response.raise_for_status()
+        try:
+            total_length = float(response.headers["Content-length"])
+        except Exception:
+            total_length = None
+        current_length = 0
+        with open(target_dir, "wb") as f:
+            async for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
                     f.write(chunk)
+                current_length += len(chunk)
+                if total_length is not None:
+                    progress.SetValue(current_length / total_length * 1000)
+
+        self.validate_zip_or_delete(reference)
+
         print("Done!")
         for callback in self.on_download_callbacks:
             callback()
@@ -258,7 +291,7 @@ class ModManager:
             for callback in self.on_delete_callbacks:
                 callback()
         else:
-            for package in self.installed_packages:
+            for package in self.cached_packages:
                 if package.is_same_package(reference):
                     await self.delete_package(package)
 
@@ -280,14 +313,14 @@ class ModManager:
             unzip.extractall(target_dir)
         print("Done!")
 
-    async def install_package(self, reference):
+    async def install_package(self, reference, progress):
         # TODO: Add checking for managed vs. extract package install
         self.install_managed_package(reference)
 
         # TODO: Resolve dependencies in a safer way
         meta = self.resolve_package_metadata(reference)
         for dependency in meta.dependencies:
-            await self.download_and_install_package(dependency)
+            await self.download_and_install_package(dependency, progress)
         for callback in self.on_install_callbacks:
             callback()
 
@@ -306,16 +339,16 @@ class ModManager:
                 if package.is_same_package(reference):
                     await self.uninstall_package(package)
 
-    async def download_and_install_package(self, reference, use_cache=True):
+    async def download_and_install_package(self, reference, progress):
         installed_packages = self.installed_packages
         if reference in installed_packages:
             return
 
-        if reference not in self.cached_packages or not use_cache:
-            self.download_package(reference)
+        if reference not in self.cached_packages:
+            await self.download_package(reference, progress)
 
         for installed_package in self.installed_packages:
             if installed_package.is_same_package(reference):
                 await self.uninstall_package(installed_package)
 
-        await self.install_package(reference)
+        await self.install_package(reference, progress)

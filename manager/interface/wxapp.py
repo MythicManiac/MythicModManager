@@ -130,7 +130,7 @@ class Application:
         self.job_queue_list = ObjectList(
             element=self.main_frame.job_queue_list,
             columns=("name", "parameters_str"),
-            column_labels=("task", "parameters"),
+            column_labels=("Task", "Parameters"),
         )
         self.configuration = ModManagerConfiguration(
             thunderstore_url="https://thunderstore.io/",
@@ -143,7 +143,10 @@ class Application:
         self.manager.bind_on_uninstall(self.refresh_installed_mod_list)
         self.manager.bind_on_download(self.refresh_downloaded_mod_list)
         self.manager.bind_on_delete(self.refresh_downloaded_mod_list)
-        self.job_manager = JobManager()
+        self.job_manager = JobManager(
+            big_progress_bar=self.main_frame.progress_bar_big,
+            small_progress_bar=self.main_frame.progress_bar_small,
+        )
         self.job_manager.bind_on_job_added(self.refresh_job_list)
         self.job_manager.bind_on_job_finished(self.refresh_job_list)
         self.current_selection = PackageMetadata.empty()
@@ -228,7 +231,10 @@ class Application:
         selections = self.downloaded_mod_list.get_selected_objects()
         for selection in selections:
             meta = self.manager.resolve_package_metadata(selection)
-            await self.add_job(DeletePackage, meta.package_reference)
+            reference = meta.package_reference
+            if self.main_frame.downloaded_mods_group_version_checkbox.GetValue():
+                reference = reference.without_version
+            await self.add_job(DeletePackage, reference)
 
     async def handle_instaled_mod_list_update(self, event=None):
         self.main_frame.installed_mods_update_button.Disable()
@@ -414,5 +420,6 @@ class Application:
         self.refresh_downloaded_mod_list()
         wx.Log.SetActiveTarget(wx.LogStderr())
         StartCoroutine(self.job_manager.worker, self.main_frame)
+        StartCoroutine(self.manager.validate_cache, self.main_frame)
         loop = get_event_loop()
         loop.run_until_complete(self.app.MainLoop())

@@ -4,7 +4,7 @@ class BaseJob:
     def __init__(self, manager):
         self.manager = manager
 
-    async def execute(self):
+    async def execute(self, progress):
         pass
 
     @property
@@ -25,26 +25,26 @@ class PackageJob(BaseJob):
 class DownloadAndInstallPackage(PackageJob):
     name = "Download and install package"
 
-    async def execute(self):
-        await self.manager.download_and_install_package(self.reference)
+    async def execute(self, progress):
+        await self.manager.download_and_install_package(self.reference, progress)
 
 
 class InstallPackage(PackageJob):
     name = "Install package"
 
-    async def execute(self):
-        await self.manager.install_package(self.reference)
+    async def execute(self, progress):
+        await self.manager.install_package(self.reference, progress)
 
 
 class UninstallPackage(PackageJob):
     name = "Uninstall package"
 
-    async def execute(self):
+    async def execute(self, progress):
         await self.manager.uninstall_package(self.reference)
 
 
 class DeletePackage(PackageJob):
     name = "Delete package"
 
-    async def execute(self):
+    async def execute(self, progress):
         await self.manager.delete_package(self.reference)

@@ -2,6 +2,7 @@ import argparse
 
 from manager.interface.app import Application as LegacyApplication
 from manager.interface.wxapp import Application as WxApplication
+from manager.utils.log import log_exception
 
 
 parser = argparse.ArgumentParser(description="Run MythicModManager")
@@ -22,4 +23,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        log_exception(e)
