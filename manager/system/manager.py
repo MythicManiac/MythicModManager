@@ -16,18 +16,12 @@ from zipfile import ZipFile
 
 class ModManagerConfiguration:
     def __init__(
-        self,
-        thunderstore_url,
-        mod_cache_path,
-        risk_of_rain_path,
-        mod_install_path,
-        log_path,
+        self, thunderstore_url, mod_cache_path, risk_of_rain_path, mod_install_path
     ):
         self.thunderstore_url = thunderstore_url
         self.mod_cache_path = Path(mod_cache_path).resolve()
         self.mod_install_path = Path(mod_install_path).resolve()
         self.risk_of_rain_path = Path(risk_of_rain_path).resolve()
-        self.log_path = Path(log_path).resolve()
 
 
 class PackageMetadata:
@@ -111,6 +105,22 @@ class ModManager:
         self.mod_cache_path = configuration.mod_cache_path
         self.mod_install_path = configuration.mod_install_path
         self.risk_of_rain_path = configuration.risk_of_rain_path
+        self.on_uninstall_callbacks = []
+        self.on_install_callbacks = []
+        self.on_delete_callbacks = []
+        self.on_download_callbacks = []
+
+    def bind_on_uninstall(self, callback):
+        self.on_uninstall_callbacks.append(callback)
+
+    def bind_on_install(self, callback):
+        self.on_install_callbacks.append(callback)
+
+    def bind_on_delete(self, callback):
+        self.on_delete_callbacks.append(callback)
+
+    def bind_on_download(self, callback):
+        self.on_download_callbacks.append(callback)
 
     @property
     def installed_packages(self):
@@ -232,17 +242,22 @@ class ModManager:
                 for chunk in (x for x in r.iter_content(chunk_size=8192) if x):
                     f.write(chunk)
         print("Done!")
+        for callback in self.on_download_callbacks:
+            callback()
 
-    def delete_package(self, reference):
+    async def delete_package(self, reference):
         if reference.version:
             print(f"Deleting {reference}... ", end="")
             package_path = self.get_package_cache_path(reference)
-            os.remove(package_path)
+            if package_path.exists():
+                os.remove(package_path)
             print("Done!")
+            for callback in self.on_delete_callbacks:
+                callback()
         else:
             for package in self.installed_packages:
                 if package.is_same_package(reference):
-                    self.delete_package(package)
+                    await self.delete_package(package)
 
     def install_extract_package(self, reference):
         pass  # TODO: Implement
@@ -262,28 +277,33 @@ class ModManager:
             unzip.extractall(target_dir)
         print("Done!")
 
-    def install_package(self, reference):
+    async def install_package(self, reference):
         # TODO: Add checking for managed vs. extract package install
         self.install_managed_package(reference)
 
         # TODO: Resolve dependencies in a safer way
         meta = self.resolve_package_metadata(reference)
         for dependency in meta.dependencies:
-            self.download_and_install_package(dependency)
+            await self.download_and_install_package(dependency)
+        for callback in self.on_install_callbacks:
+            callback()
 
-    def uninstall_package(self, reference):
+    async def uninstall_package(self, reference):
         # TODO: Also uninstall dependants
         if reference.version:
             print(f"Uninstalling {reference}... ", end="")
             package_path = self.get_managed_package_path(reference)
-            shutil.rmtree(package_path)
+            if package_path.exists():
+                shutil.rmtree(package_path)
             print("Done!")
+            for callback in self.on_uninstall_callbacks:
+                callback()
         else:
             for package in self.installed_packages:
                 if package.is_same_package(reference):
-                    self.uninstall_package(package)
+                    await self.uninstall_package(package)
 
-    def download_and_install_package(self, reference, use_cache=True):
+    async def download_and_install_package(self, reference, use_cache=True):
         installed_packages = self.installed_packages
         if reference in installed_packages:
             return
@@ -293,6 +313,6 @@ class ModManager:
 
         for installed_package in self.installed_packages:
             if installed_package.is_same_package(reference):
-                self.uninstall_package(installed_package)
+                await self.uninstall_package(installed_package)
 
-        self.install_package(reference)
+        await self.install_package(reference)

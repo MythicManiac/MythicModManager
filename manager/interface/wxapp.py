@@ -1,10 +1,17 @@
 import wx
 import json
 
-from wxasync import WxAsyncApp, AsyncBind
+from wxasync import WxAsyncApp, AsyncBind, StartCoroutine
 from asyncio.events import get_event_loop
 
 from ..system.manager import ModManager, ModManagerConfiguration, PackageMetadata
+from ..system.job_manager import JobManager
+from ..system.jobs import (
+    DownloadAndInstallPackage,
+    InstallPackage,
+    UninstallPackage,
+    DeletePackage,
+)
 from ..utils.log import log_exception
 from ..api.types import PackageReference
 
@@ -99,18 +106,29 @@ class Application:
             column_labels=("Name", "Author", "Version"),
         )
         self.job_queue_list = ObjectList(
-            element=self.main_frame.job_queue_list, columns=("task", "parameters")
+            element=self.main_frame.job_queue_list,
+            columns=("name", "parameters_str"),
+            column_labels=("task", "parameters"),
         )
         self.configuration = ModManagerConfiguration(
             thunderstore_url="https://thunderstore.io/",
             mod_cache_path="mod-cache/",
             mod_install_path="risk-of-rain-2/mods/",
             risk_of_rain_path="risk-of-rain-2/",
-            log_path="logs/",
         )
         self.manager = ModManager(self.configuration)
+        self.manager.bind_on_install(self.refresh_installed_mod_list)
+        self.manager.bind_on_uninstall(self.refresh_installed_mod_list)
+        self.manager.bind_on_download(self.refresh_downloaded_mod_list)
+        self.manager.bind_on_delete(self.refresh_downloaded_mod_list)
+        self.job_manager = JobManager()
+        self.job_manager.bind_on_job_added(self.refresh_job_list)
+        self.job_manager.bind_on_job_finished(self.refresh_job_list)
         self.current_selection = PackageMetadata.empty()
         self.bind_events()
+
+    def refresh_job_list(self):
+        self.job_queue_list.update(self.job_manager.job_queue)
 
     async def handle_remote_mod_list_select(self, event=None):
         await self.handle_selection_update(self.remote_mod_list.get_first_selection())
@@ -160,9 +178,7 @@ class Application:
         selections = self.installed_mod_list.get_selected_objects()
         for selection in selections:
             meta = self.manager.resolve_package_metadata(selection)
-            self.manager.uninstall_package(meta.package_reference)
-        if selections:
-            self.refresh_installed_mod_list()
+            await self.add_job(UninstallPackage, meta.package_reference)
 
     async def handle_downloaded_mod_list_install(self, event=None):
         selections = self.downloaded_mod_list.get_selected_objects()
@@ -170,21 +186,17 @@ class Application:
             meta = self.manager.resolve_package_metadata(selection)
             reference = meta.package_reference
             if reference.version:
-                self.manager.install_package(reference)
+                await self.add_job(InstallPackage, reference)
             else:
                 newest = self.manager.get_newest_cached(reference)
                 if newest:
                     self.manager.installed_packages(newest)
-        if selections:
-            self.refresh_installed_mod_list()
 
     async def handle_downloaded_mod_list_delete(self, event=None):
         selections = self.downloaded_mod_list.get_selected_objects()
         for selection in selections:
             meta = self.manager.resolve_package_metadata(selection)
-            self.manager.delete_package(meta.package_reference)
-        if selections:
-            self.refresh_downloaded_mod_list()
+            await self.add_job(DeletePackage, meta.package_reference)
 
     def bind_events(self):
         AsyncBind(
@@ -248,7 +260,7 @@ class Application:
             json.dumps([str(x) for x in self.manager.installed_packages]),
         )
 
-    def attempt_import(self, raw_data):
+    async def attempt_import(self, raw_data):
         try:
             references = json.loads(raw_data)
         except Exception:
@@ -270,26 +282,24 @@ class Application:
             return
 
         for reference in references:
-            self.manager.download_and_install_package(reference)
+            await self.add_job(DownloadAndInstallPackage, reference)
+
+    async def add_job(self, cls, *args):
+        await self.job_manager.put(cls(self.manager, *args))
 
     async def handle_installed_mod_list_import(self, event=None):
         dialog = wx.TextEntryDialog(
             self.main_frame, "Enter mod configuration", "Installed mods import"
         )
         if dialog.ShowModal() == wx.ID_OK:
-            self.attempt_import(dialog.GetValue())
-            self.refresh_installed_mod_list()
-            self.refresh_downloaded_mod_list()
+            await self.attempt_import(dialog.GetValue())
         dialog.Destroy()
 
     async def handle_mod_list_install(self, event=None):
         selections = self.remote_mod_list.get_selected_objects()
         for selection in selections:
             meta = self.manager.resolve_package_metadata(selection)
-            self.manager.download_and_install_package(meta.package_reference)
-        if selections:
-            self.refresh_downloaded_mod_list()
-            self.refresh_installed_mod_list()
+            await self.add_job(DownloadAndInstallPackage, meta.package_reference)
 
     async def handle_mod_list_refresh(self, event=None):
         if event:
@@ -301,7 +311,7 @@ class Application:
             )
             self.remote_mod_list.update(packages)
         except Exception as e:
-            log_exception(self.configuration.log_path, e)
+            log_exception(e)
             wx.MessageBox(
                 "Failed to pull remote package data. Server could be offline.",
                 "Error",
@@ -326,5 +336,6 @@ class Application:
         self.refresh_installed_mod_list()
         self.refresh_downloaded_mod_list()
         wx.Log.SetActiveTarget(wx.LogStderr())
+        StartCoroutine(self.job_manager.worker, self.main_frame)
         loop = get_event_loop()
         loop.run_until_complete(self.app.MainLoop())

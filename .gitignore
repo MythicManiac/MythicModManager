@@ -4,6 +4,7 @@
 mod-cache/
 risk-of-rain-2/
 logs/
+mmm-logs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
