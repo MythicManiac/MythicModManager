@@ -21,6 +21,7 @@ from .generated import MainFrame
 
 class ObjectList:
     def __init__(self, element, columns, column_labels=None):
+        self.current_sort = 1
         self.element = element
         self.columns = columns
         if column_labels:
@@ -33,9 +34,29 @@ class ObjectList:
         for index, label in enumerate(self.column_labels):
             self.element.InsertColumn(index, label)
         self.resize_columns()
+        self.bind_events()
+
+    def bind_events(self):
         self.element.Bind(wx.EVT_SIZE, lambda event: self.resize_columns())
+        self.element.Bind(wx.EVT_LIST_COL_CLICK, self.sort_list)
+
+    def sort_list(self, event):
+        col_index = event.GetColumn() + 1
+        if self.current_sort == col_index:
+            self.current_sort = -col_index
+        else:
+            self.current_sort = col_index
+        self.update(self.objects)
 
     def update(self, new_objects):
+        def get_sort_key(entry):
+            key = getattr(entry, self.columns[abs(self.current_sort) - 1], None)
+            return key or ""
+
+        new_objects = sorted(
+            new_objects, key=get_sort_key, reverse=self.current_sort < 0
+        )
+
         self.element.DeleteAllItems()
         for row, entry in enumerate(new_objects):
             label = str(getattr(entry, self.columns[0], None) or "")
