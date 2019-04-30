@@ -125,6 +125,10 @@ class Application:
         self.job_manager.bind_on_job_added(self.refresh_job_list)
         self.job_manager.bind_on_job_finished(self.refresh_job_list)
         self.current_selection = PackageMetadata.empty()
+        self.main_frame.selection_description.SetLabel("")
+        self.main_frame.selection_title.SetLabel("")
+        self.main_frame.selection_version.SetLabel("")
+        self.main_frame.selection_download_count.SetLabel("")
         self.bind_events()
 
     def refresh_job_list(self):

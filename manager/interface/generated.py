@@ -101,11 +101,10 @@ class MainFrame(wx.Frame):
         self.selection_download_count = wx.StaticText(
             self.selection_info_panel, wx.ID_ANY, "Total downloads: 68309"
         )
-        self.selection_thunderstore_button = wx.Button(
-            self, wx.ID_ANY, "View on Thunderstore"
-        )
-        self.progress_bar_big = wx.Gauge(self, wx.ID_ANY, 10)
-        self.progress_bar_small = wx.Gauge(self, wx.ID_ANY, 10)
+        self.selection_thunderstore_button = wx.Button(self, wx.ID_ANY, "More Details")
+        self.launch_game_button = wx.Button(self, wx.ID_ANY, "Launch Game")
+        self.progress_bar_big = wx.Gauge(self, wx.ID_ANY, 1000)
+        self.progress_bar_small = wx.Gauge(self, wx.ID_ANY, 1000)
 
         self.__set_properties()
         self.__do_layout()
@@ -271,6 +270,7 @@ class MainFrame(wx.Frame):
         selection_info_buttons_sizer.Add(
             self.selection_thunderstore_button, 1, wx.EXPAND, 0
         )
+        selection_info_buttons_sizer.Add(self.launch_game_button, 0, wx.EXPAND, 0)
         selection_info_content_sizer.Add(selection_info_buttons_sizer, 0, wx.EXPAND, 0)
         selection_info_sizer.Add(selection_info_content_sizer, 1, wx.EXPAND, 0)
         main_content_sizer.Add(selection_info_sizer, 0, wx.EXPAND, 0)
