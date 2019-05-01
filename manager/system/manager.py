@@ -275,7 +275,7 @@ class ModManager:
                 if total_length is not None:
                     progress.SetValue(current_length / total_length * 1000)
 
-        self.validate_zip_or_delete(reference)
+        await self.validate_zip_or_delete(reference)
 
         print("Done!")
         for callback in self.on_download_callbacks:
@@ -305,6 +305,10 @@ class ModManager:
 
         if not target_dir.is_dir():
             os.makedirs(target_dir)
+
+        if not package_path.exists():
+            print("Could not install, package was not found")
+            return
 
         with ZipFile(package_path) as unzip:
             if unzip.testzip():
