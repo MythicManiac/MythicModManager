@@ -148,22 +148,22 @@ class Application:
         self.configuration = ModManagerConfiguration(
             thunderstore_url="https://thunderstore.io/",
             mod_cache_path="mod-cache/",
-            # mod_install_path="risk-of-rain-2/mods/",
-            # risk_of_rain_path="risk-of-rain-2/",
             mod_install_path=risk_of_rain_path / "BepInEx" / "plugins",
             risk_of_rain_path=risk_of_rain_path,
         )
-        self.manager = ModManager(self.configuration)
-        self.manager.bind_on_install(self.refresh_installed_mod_list)
-        self.manager.bind_on_uninstall(self.refresh_installed_mod_list)
-        self.manager.bind_on_download(self.refresh_downloaded_mod_list)
-        self.manager.bind_on_delete(self.refresh_downloaded_mod_list)
         self.job_manager = JobManager(
             big_progress_bar=self.main_frame.progress_bar_big,
             small_progress_bar=self.main_frame.progress_bar_small,
         )
         self.job_manager.bind_on_job_added(self.refresh_job_list)
         self.job_manager.bind_on_job_finished(self.refresh_job_list)
+
+        self.manager = ModManager(self.configuration, self.job_manager)
+        self.manager.bind_on_install(self.refresh_installed_mod_list)
+        self.manager.bind_on_uninstall(self.refresh_installed_mod_list)
+        self.manager.bind_on_download(self.refresh_downloaded_mod_list)
+        self.manager.bind_on_delete(self.refresh_downloaded_mod_list)
+
         self.current_selection = PackageMetadata.empty()
         self.main_frame.selection_description.SetLabel("")
         self.main_frame.selection_title.SetLabel("")
@@ -251,16 +251,18 @@ class Application:
                 reference = reference.without_version
             await self.add_job(DeletePackage, reference)
 
-    async def handle_instaled_mod_list_update(self, event=None):
+    async def handle_installed_mod_list_update_button(self, event=None):
         self.main_frame.installed_mods_update_button.Disable()
         await self.handle_mod_list_refresh()
+        installed_packages = self.manager.installed_packages
         for package in self.manager.installed_packages:
             package = package.without_version
             if package not in self.manager.api.packages:
                 continue
             package = self.manager.api.packages[package]
             latest = package.versions.latest.package_reference
-            await self.add_job(DownloadAndInstallPackage, latest)
+            if latest not in installed_packages:
+                await self.add_job(DownloadAndInstallPackage, latest)
         self.main_frame.installed_mods_update_button.Enable()
 
     def handle_selection_thunderstore_button(self, event=None):
@@ -327,7 +329,7 @@ class Application:
         )
         AsyncBind(
             wx.EVT_BUTTON,
-            self.handle_instaled_mod_list_update,
+            self.handle_installed_mod_list_update_button,
             self.main_frame.installed_mods_update_button,
         )
         AsyncBind(
@@ -436,5 +438,6 @@ class Application:
         wx.Log.SetActiveTarget(wx.LogStderr())
         StartCoroutine(self.job_manager.worker, self.main_frame)
         StartCoroutine(self.manager.validate_cache, self.main_frame)
+        StartCoroutine(self.manager.migrate_mmm_prefixes, self.main_frame)
         loop = get_event_loop()
         loop.run_until_complete(self.app.MainLoop())

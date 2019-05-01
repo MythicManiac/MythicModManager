@@ -6,11 +6,13 @@ import json
 from pathlib import Path
 from io import BytesIO
 
+from zipfile import ZipFile
+
 from ..api.types import PackageReference
 from ..api.thunderstore import ThunderstoreAPI
 from ..utils.log import log_exception
 
-from zipfile import ZipFile
+from .jobs import DownloadAndInstallPackage
 
 
 class ModManagerConfiguration:
@@ -101,11 +103,12 @@ class PackageMetadata:
 
 
 class ModManager:
-    def __init__(self, configuration):
+    def __init__(self, configuration, job_manager):
         self.api = ThunderstoreAPI(configuration.thunderstore_url)
         self.mod_cache_path = configuration.mod_cache_path
         self.mod_install_path = configuration.mod_install_path
         self.risk_of_rain_path = configuration.risk_of_rain_path
+        self.job_manager = job_manager
         self.on_uninstall_callbacks = []
         self.on_install_callbacks = []
         self.on_delete_callbacks = []
@@ -125,11 +128,14 @@ class ModManager:
 
     @property
     def installed_packages(self):
-        return [
-            PackageReference.parse(x.name)
-            for x in self.mod_install_path.glob("*")
-            if x.is_dir() and (x / "manifest.json").exists()
-        ]
+        result = []
+        for entry in self.mod_install_path.glob("*"):
+            if entry.is_dir() and (entry / "manifest.json").exists():
+                try:
+                    result.append(PackageReference.parse(entry.name))
+                except Exception:
+                    pass
+        return result
 
     @property
     def cached_packages(self):
@@ -185,6 +191,15 @@ class ModManager:
                 PackageReference.parse(x) for x in data.get("dependencies", [])
             ],
         )
+
+    async def migrate_mmm_prefixes(self):
+        for entry in self.mod_install_path.glob("mmm-*"):
+            try:
+                reference = PackageReference.parse(entry.name[4:])
+                await self.job_manager.put(DownloadAndInstallPackage(self, reference))
+            except Exception as e:
+                log_exception(e)
+            shutil.rmtree(entry)
 
     async def validate_cache(self):
         for package in self.cached_packages:
@@ -318,6 +333,25 @@ class ModManager:
         print("Done!")
 
     async def install_package(self, reference, progress):
+        if not reference.version:
+            print("Skipping install, no version specified")
+            return
+
+        installed_packages = self.installed_packages
+        if reference in installed_packages:
+            print(f"Skipping install, {reference} already installed")
+            return
+
+        for installed_package in installed_packages:
+            if installed_package.is_same_package(reference):
+                if installed_package.version > reference.version:
+                    print(
+                        f"Skipping install of {reference}, {installed_package} already present"
+                    )
+                    return
+                else:
+                    await self.uninstall_package(installed_package)
+
         # TODO: Add checking for managed vs. extract package install
         self.install_managed_package(reference)
 
@@ -344,15 +378,19 @@ class ModManager:
                     await self.uninstall_package(package)
 
     async def download_and_install_package(self, reference, progress):
-        installed_packages = self.installed_packages
-        if reference in installed_packages:
-            return
+
+        if not reference.version:
+            if reference in self.api.packages:
+                reference = self.api.packages[
+                    reference
+                ].versions.latest.package_reference
+            else:
+                print(
+                    f"Could not find version information for {reference}, skipping install"
+                )
+                print(f"Try refreshing the package list first")
 
         if reference not in self.cached_packages:
             await self.download_package(reference, progress)
-
-        for installed_package in self.installed_packages:
-            if installed_package.is_same_package(reference):
-                await self.uninstall_package(installed_package)
 
         await self.install_package(reference, progress)
