@@ -335,6 +335,14 @@ class Application:
         AsyncBind(
             wx.EVT_TEXT, self.handle_mod_list_search, self.main_frame.mod_list_search
         )
+        AsyncBind(
+            wx.EVT_BUTTON,
+            self.handle_launch_game_button,
+            self.main_frame.launch_game_button,
+        )
+
+    async def handle_launch_game_button(self, event=None):
+        webbrowser.open_new("steam://run/632360")
 
     async def handle_installed_mod_list_export(self, event=None):
         CopyableDialog(
