@@ -26,10 +26,7 @@ class ObjectList:
         self.current_sort = 1
         self.element = element
         self.columns = columns
-        if column_labels:
-            self.column_labels = column_labels
-        else:
-            self.column_labels = [x.capitalize().replace("_", " ") for x in columns]
+        self.column_labels = column_labels if column_labels else [x.capitalize().replace("_", " ") for x in columns]
         self.objects = []
 
         self.element.ClearAll()
