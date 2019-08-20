@@ -88,7 +88,7 @@ class ObjectList:
             return None
         return self.objects[selection]
 
-    def resize_columns(self, **args):
+    def resize_columns(self, *args, **kwargs):
         width, height = self.element.GetClientSize()
         column_width = int(float(width) / len(self.column_labels))
         for index in range(len(self.column_labels)):
