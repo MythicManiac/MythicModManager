@@ -41,10 +41,7 @@ class ObjectList:
 
     def sort_list(self, event):
         col_index = event.GetColumn() + 1
-        if self.current_sort == col_index:
-            self.current_sort = -col_index
-        else:
-            self.current_sort = col_index
+        self.current_sort = -col_index if self.current_sort == col_index else col_index
         self.update(self.objects)
 
     def update(self, new_objects):
