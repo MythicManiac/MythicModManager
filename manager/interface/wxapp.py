@@ -36,7 +36,7 @@ class ObjectList:
         self.bind_events()
 
     def bind_events(self):
-        self.element.Bind(wx.EVT_SIZE, lambda event: self.resize_columns())
+        self.element.Bind(wx.EVT_SIZE, self.resize_columns)
         self.element.Bind(wx.EVT_LIST_COL_CLICK, self.sort_list)
 
     def sort_list(self, event):
@@ -88,7 +88,7 @@ class ObjectList:
             return None
         return self.objects[selection]
 
-    def resize_columns(self):
+    def resize_columns(self, **args):
         width, height = self.element.GetClientSize()
         column_width = int(float(width) / len(self.column_labels))
         for index in range(len(self.column_labels)):
