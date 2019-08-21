@@ -2,6 +2,8 @@ import wx
 import json
 import webbrowser
 
+from collections import defaultdict
+
 from wxasync import WxAsyncApp, AsyncBind, StartCoroutine
 from asyncio.events import get_event_loop
 from pathlib import Path
@@ -41,6 +43,7 @@ class ObjectList:
         self.element.ClearAll()
         for index, label in enumerate(self.column_labels):
             self.element.InsertColumn(index, label)
+
         self.resize_columns()
         self.bind_events()
 
@@ -217,27 +220,22 @@ class Application:
         if self.current_selection == selection_meta:
             self.main_frame.selection_icon_bitmap.SetBitmap(bitmap)
 
-    async def handle_installed_mod_list_uninstall(self, event=None):
-        for selection in self.lists[
-            ModLists.INSTALLED_MODS.name
-        ].get_selected_objects():
-            meta = self.manager.resolve_package_metadata(selection)
-            await self.add_job(UninstallPackage, meta.package_reference)
+    def make_package_management_function(self, Mod, Package):
+        async def handle_package_job(event=None):
+            for selection in self.lists[Mod.name].get_selected_objects():
+                meta = self.manager.resolve_package_metadata(selection)
+                reference = meta.package_reference
+                if not reference.version:
+                    newest = self.manager.get_newest_cached(reference)
+                    if newest:
+                        reference = newest
+                await self.add_job(Package, reference)
 
-    async def handle_downloaded_mod_list_install(self, event=None):
-        for selection in self.lists[
-            ModLists.DOWNLOADED_MODS.name
-        ].get_selected_objects():
-            meta = self.manager.resolve_package_metadata(selection)
-            reference = meta.package_reference
-            if reference.version:
-                await self.add_job(InstallPackage, reference)
-            else:
-                newest = self.manager.get_newest_cached(reference)
-                if newest:
-                    self.manager.installed_packages(newest)
+        return handle_package_job
 
-    async def handle_downloaded_mod_list_delete(self, event=None):
+    async def handle_downloaded_mod_list_delete(
+        self, event=None, button=None, *args, **kwargs
+    ):
         for selection in self.lists[
             ModLists.DOWNLOADED_MODS.name
         ].get_selected_objects():
@@ -249,10 +247,9 @@ class Application:
                 reference = reference.without_version
             await self.add_job(DeletePackage, reference)
 
-    async def handle_installed_mod_list_update_button(self, event=None):
-        self.main_frame.tabs_data[Tabs.MANAGER.value]["children"][
-            Buttons.UPDATE.name
-        ].Disable()
+    async def handle_installed_mod_list_update_button(
+        self, event=None, button=None, *args, **kwargs
+    ):
         await self.handle_mod_list_refresh()
         installed_packages = self.manager.installed_packages
         for package in self.manager.installed_packages:
@@ -263,16 +260,29 @@ class Application:
             latest = package.versions.latest.package_reference
             if latest not in installed_packages:
                 await self.add_job(DownloadAndInstallPackage, latest)
-        self.main_frame.tabs_data[Tabs.MANAGER.value]["children"][
-            Buttons.UPDATE.name
-        ].Enable()
 
     def handle_selection_thunderstore_button(self, event=None):
         meta = self.manager.resolve_package_metadata(self.current_selection)
         if meta.thunderstore_url:
             webbrowser.open(meta.thunderstore_url)
 
-    def bind_events(self):
+    def bind_singular_selection_event(self, Mod):
+        mod, tab, list_ctrl = get_mod_and_tab_and_list_ctrl_from_mod(Mod)
+        AsyncBind(
+            wx.EVT_LIST_ITEM_SELECTED,
+            self.make_list_selection_update_function(mod),
+            self.main_frame.tabs_data[tab.value]["children"][list_ctrl._name_],
+        )
+
+    def bind_singular_selection_events(self):
+        for Mod in [
+            ModLists.INSTALLED_MODS,
+            ModLists.DOWNLOADED_MODS,
+            ModLists.REMOTE_MODS,
+        ]:
+            self.bind_singular_selection_event(Mod)
+
+    def bind_buttons_in_tabs_events(self):
         remote_mod, remote_tab, remote_list = get_mod_and_tab_and_list_ctrl_from_mod(
             ModLists.REMOTE_MODS
         )
@@ -282,83 +292,54 @@ class Application:
         downloaded_mod, downloaded_tab, downloaded_list = get_mod_and_tab_and_list_ctrl_from_mod(
             ModLists.DOWNLOADED_MODS
         )
-        job_mod, job_tab, job_list = get_mod_and_tab_and_list_ctrl_from_mod(
-            ModLists.JOB_QUEUE
-        )
-        AsyncBind(
-            wx.EVT_BUTTON,
-            self.handle_mod_list_refresh,
-            self.main_frame.tabs_data[remote_tab.value]["children"][
-                Buttons.REFRESH.name
+        tabs = defaultdict(list)
+        tabs[remote_tab].extend([
+            [Buttons.REFRESH, self.handle_mod_list_refresh, "Refreshing..."],
+            [Buttons.INSTALL_SELECTED, self.handle_mod_list_install, "Installing..."],
+        ])
+        tabs[installed_tab].extend([
+            [
+                Buttons.UNINSTALL,
+                self.make_package_management_function(installed_mod, UninstallPackage),
+                "Uninstalling...",
             ],
-        )
-        self.main_frame.tabs_data[downloaded_tab.value]["children"][
-            "{}{}".format(downloaded_list._name_, "checkbox")
-        ].Bind(wx.EVT_CHECKBOX, self.refresh_downloaded_mod_list)
-        self.main_frame.selection_thunderstore_button.Bind(
-            wx.EVT_BUTTON, self.handle_selection_thunderstore_button
-        )
-        for mod, tab, list_ctrl in [
-            [installed_mod, installed_tab, installed_list],
-            [downloaded_mod, downloaded_tab, downloaded_list],
-            [remote_mod, remote_tab, remote_list]
-        ]:
-            AsyncBind(
-                wx.EVT_LIST_ITEM_SELECTED,
-                self.make_list_selection_update_function(mod),
-                self.main_frame.tabs_data[tab.value]["children"][
-                    list_ctrl._name_
-                ],
-            )
-        AsyncBind(
-            wx.EVT_BUTTON,
-            self.handle_installed_mod_list_uninstall,
-            self.main_frame.tabs_data[installed_tab.value]["children"][
-                Buttons.UNINSTALL.name
+            [Buttons.EXPORT, self.handle_installed_mod_list_export, "Exporting..."],
+            [Buttons.IMPORT, self.handle_installed_mod_list_import, "Importing..."],
+            [
+                Buttons.UPDATE,
+                self.handle_installed_mod_list_update_button,
+                "Updating...",
             ],
-        )
-        AsyncBind(
-            wx.EVT_BUTTON,
-            self.handle_downloaded_mod_list_install,
-            self.main_frame.tabs_data[downloaded_tab.value]["children"][
-                Buttons.INSTALL.name
+        ])
+        tabs[downloaded_tab].extend([
+            [
+                Buttons.INSTALL,
+                self.make_package_management_function(downloaded_mod, InstallPackage),
+                "Installing...",
             ],
+            [Buttons.DELETE, self.handle_downloaded_mod_list_delete, "Deleting..."],
+        ])
+
+        # Make Async Events For Buttons In Tabs Above
+        for tab, button_list in tabs.items():
+            for Button, func, label in button_list:
+                self.make_async_bind_for_button(
+                    self.main_frame.tabs_data[tab.value]["children"][Button.name],
+                    func,
+                    disabled_label=label,
+                )
+
+    def bind_events(self):
+        self.bind_singular_selection_events()
+        self.bind_buttons_in_tabs_events()
+
+        _, remote_tab, remote_list = get_mod_and_tab_and_list_ctrl_from_mod(
+            ModLists.REMOTE_MODS
         )
-        AsyncBind(
-            wx.EVT_BUTTON,
-            self.handle_downloaded_mod_list_delete,
-            self.main_frame.tabs_data[downloaded_tab.value]["children"][
-                Buttons.DELETE.name
-            ],
+        downloaded_mod, downloaded_tab, downloaded_list = get_mod_and_tab_and_list_ctrl_from_mod(
+            ModLists.DOWNLOADED_MODS
         )
-        AsyncBind(
-            wx.EVT_BUTTON,
-            self.handle_mod_list_install,
-            self.main_frame.tabs_data[remote_tab.value]["children"][
-                Buttons.INSTALL_SELECTED.name
-            ],
-        )
-        AsyncBind(
-            wx.EVT_BUTTON,
-            self.handle_installed_mod_list_export,
-            self.main_frame.tabs_data[installed_tab.value]["children"][
-                Buttons.EXPORT.name
-            ],
-        )
-        AsyncBind(
-            wx.EVT_BUTTON,
-            self.handle_installed_mod_list_import,
-            self.main_frame.tabs_data[installed_tab.value]["children"][
-                Buttons.IMPORT.name
-            ],
-        )
-        AsyncBind(
-            wx.EVT_BUTTON,
-            self.handle_installed_mod_list_update_button,
-            self.main_frame.tabs_data[installed_tab.value]["children"][
-                Buttons.UPDATE.name
-            ],
-        )
+
         AsyncBind(
             wx.EVT_TEXT,
             self.handle_mod_list_search,
@@ -366,16 +347,45 @@ class Application:
                 "{}{}".format(remote_list._name_, "search")
             ],
         )
-        AsyncBind(
-            wx.EVT_BUTTON,
-            self.handle_launch_game_button,
+
+        self.main_frame.tabs_data[downloaded_tab.value]["children"][
+            "{}{}".format(downloaded_list._name_, "checkbox")
+        ].Bind(wx.EVT_CHECKBOX, self.refresh_downloaded_mod_list)
+
+        # A MakeAsyncBind function that takes the Button Element, An OnClick Func, and if the Button should be disabled during function call
+        self.make_async_bind_for_button(
             self.main_frame.launch_game_button,
+            self.handle_launch_game_button,
+            disabled_label="Launching...",
+        )
+        self.main_frame.selection_thunderstore_button.Bind(
+            wx.EVT_BUTTON, self.handle_selection_thunderstore_button
         )
 
-    async def handle_launch_game_button(self, event=None):
+    def make_async_bind_for_button(
+        self, Button, func, is_disabled_during_func=True, disabled_label=None
+    ):
+        async def disable_during_click(event=None):
+            label = Button.GetLabel()
+            if is_disabled_during_func:
+                Button.Disable()
+                if disabled_label:
+                    Button.SetLabel(disabled_label)
+
+            await func(event=event, button=Button)
+            if is_disabled_during_func:
+                Button.Enable()
+                if disabled_label:
+                    Button.SetLabel(label)
+
+        AsyncBind(wx.EVT_BUTTON, disable_during_click, Button)
+
+    async def handle_launch_game_button(self, event=None, button=None, *args, **kwargs):
         webbrowser.open_new("steam://run/632360")
 
-    async def handle_installed_mod_list_export(self, event=None):
+    async def handle_installed_mod_list_export(
+        self, event=None, button=None, *args, **kwargs
+    ):
         CopyableDialog(
             self.main_frame,
             "Installed mods export",
@@ -409,7 +419,9 @@ class Application:
     async def add_job(self, cls, *args):
         await self.job_manager.put(cls(self.manager, *args))
 
-    async def handle_installed_mod_list_import(self, event=None):
+    async def handle_installed_mod_list_import(
+        self, event=None, button=None, *args, **kwargs
+    ):
         dialog = wx.TextEntryDialog(
             self.main_frame, "Enter mod configuration", "Installed mods import"
         )
@@ -417,19 +429,19 @@ class Application:
             await self.attempt_import(dialog.GetValue())
         dialog.Destroy()
 
-    async def handle_mod_list_search(self, event=None):
+    async def handle_mod_list_search(self, event=None, button=None, *args, **kwargs):
         query = event.GetString()
         if query is None:
             return
         await self.update_mod_list_content(query)
 
-    async def handle_mod_list_install(self, event=None):
+    async def handle_mod_list_install(self, event=None, button=None, *args, **kwargs):
         mod = ModLists.REMOTE_MODS
         for selection in self.lists[mod.name].get_selected_objects():
             meta = self.manager.resolve_package_metadata(selection)
             await self.add_job(DownloadAndInstallPackage, meta.package_reference)
 
-    async def handle_mod_list_refresh(self, event=None):
+    async def handle_mod_list_refresh(self, event=None, button=None, *args, **kwargs):
         if event:
             event.GetEventObject().Disable()
         try:
@@ -463,11 +475,11 @@ class Application:
         packages = sorted(packages, key=lambda entry: entry.name)
         self.lists[mod.name].update(packages)
 
-    def refresh_installed_mod_list(self, event=None):
+    def refresh_installed_mod_list(self, event=None, button=None, *args, **kwargs):
         packages = sorted(self.manager.installed_packages, key=lambda entry: entry.name)
         self.lists[ModLists.INSTALLED_MODS.name].update(packages)
 
-    def refresh_downloaded_mod_list(self, event=None):
+    def refresh_downloaded_mod_list(self, event=None, button=None, *args, **kwargs):
         packages = self.manager.cached_packages
         mod = ModLists.DOWNLOADED_MODS
         tab, list_ctrl, _ = mod.value
