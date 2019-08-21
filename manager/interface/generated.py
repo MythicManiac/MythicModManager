@@ -73,6 +73,14 @@ class ListCtrlEnums(NamedConstant):
     INSTALLED = [ColumnEnums.NAME, ColumnEnums.NAMESPACE, ColumnEnums.VERSION]
     JOBS = [ColumnEnums.NAME, ColumnEnums.PARAMETERS_STR]
 
+def make_mod_list_value(TabEnum=None, ListCtrlEnum=None):
+    return tuple([TabEnum, ListCtrlEnum, ListCtrlEnum._name_])
+
+class ModLists(Enum):
+    REMOTE_MODS = make_mod_list_value(Tabs.MOD_LIST, ListCtrlEnums.MODS)
+    INSTALLED_MODS = make_mod_list_value(Tabs.MANAGER, ListCtrlEnums.INSTALLED)
+    DOWNLOADED_MODS = make_mod_list_value(Tabs.MANAGER, ListCtrlEnums.DOWNLOADED)
+    JOB_QUEUE = make_mod_list_value(Tabs.JOB_QUEUE, ListCtrlEnums.JOBS)
 
 # begin wxGlade: dependencies
 # end wxGlade
