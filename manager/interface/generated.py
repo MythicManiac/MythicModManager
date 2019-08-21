@@ -149,30 +149,41 @@ class MainFrame(wx.Frame):
             buttons.append(tab_data["children"][button.name])
         return buttons
 
+    def setup_checkbox_for_list_sizer(self, tab, tab_data, title, ListEnum, is_checked=True):
+        key = "{}{}".format(ListEnum._name_, "checkbox")
+        tab_data["children"][key] = wx.CheckBox(
+            tab, wx.ID_ANY, title
+        )
+        tab_data["children"][key].SetValue(1 if is_checked else 0)
+        return tab_data["children"][key]
+
+    def setup_search_for_list_sizer(self, tab, tab_data, ListEnum, title="", has_cancel_button=True):
+        key = "{}{}".format(ListEnum._name_, "search")
+        tab_data["children"][key] = wx.SearchCtrl(
+            tab, wx.ID_ANY, title
+        )
+        tab_data["children"][key].ShowCancelButton(has_cancel_button)
+        return tab_data["children"][key]
+
+
     def setup_list_sizer(
         self, tab, tab_data, title, buttons, ListEnum, has_search=False, has_checkbox=False
     ):
         list_sizer = wx.BoxSizer(wx.VERTICAL)
         buttons_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
         if title:
             list_sizer.Add(self.get_title_sizer(tab, title), 0, 0, 0)
+
         for button in buttons:
             buttons_sizer.Add(button, 1, wx.EXPAND, 0)
         list_sizer.Add(buttons_sizer, 0, wx.EXPAND, 0)
 
         if has_checkbox:
-            key = "{}{}".format(ListEnum._name_, "checkbox")
-            tab_data["children"][key] = wx.CheckBox(
-                tab, wx.ID_ANY, "Group by version"
-            )
-            tab_data["children"][key].SetValue(1)
-            buttons_sizer.Add(tab_data["children"][key], 0, wx.ALIGN_CENTER, 0)
+            buttons_sizer.Add(self.setup_checkbox_for_list_sizer(tab, tab_data, "Group by version", ListEnum), 0, wx.ALIGN_CENTER, 0)
 
         if has_search:
-            key = "{}{}".format(ListEnum._name_, "search")
-            tab_data["children"][key] = wx.SearchCtrl(tab, wx.ID_ANY, "")
-            tab_data["children"][key].ShowCancelButton(True)
-            list_sizer.Add(tab_data["children"][key], 0, wx.EXPAND, 0)
+            list_sizer.Add(self.setup_search_for_list_sizer(tab, tab_data, ListEnum), 0, wx.EXPAND, 0)
 
         tab_data["children"][ListEnum._name_] = wx.ListCtrl(
             tab, wx.ID_ANY, style=wx.LC_HRULES | wx.LC_REPORT | wx.LC_VRULES
