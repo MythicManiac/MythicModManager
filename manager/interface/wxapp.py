@@ -20,6 +20,7 @@ from ..api.types import PackageReference
 
 from .generated import MainFrame, Tabs, Buttons, ListCtrlEnums, ModLists
 
+
 def get_mod_and_tab_and_list_ctrl_from_mod(Mod):
     tab, list_ctrl, _ = Mod.value
     return Mod, tab, list_ctrl
@@ -30,7 +31,11 @@ class ObjectList:
         self.current_sort = 1
         self.element = element
         self.columns = columns
-        self.column_labels = column_labels if column_labels else [x.capitalize().replace("_", " ") for x in columns]
+        self.column_labels = (
+            column_labels
+            if column_labels
+            else [x.capitalize().replace("_", " ") for x in columns]
+        )
         self.objects = []
 
         self.element.ClearAll()
@@ -103,9 +108,12 @@ class CopyableDialog(wx.Dialog):
 
 class Application:
     lists = {}
+
     def make_object_list(self, TabEnum, ListCtrlEnum, *args, **kwargs):
         return ObjectList(
-            element=self.main_frame.tabs_data[TabEnum.value]['children'][ListCtrlEnum._name_],
+            element=self.main_frame.tabs_data[TabEnum.value]["children"][
+                ListCtrlEnum._name_
+            ],
             columns=[v.name.lower() for v in ListCtrlEnum._value_],
             column_labels=[v.value for v in ListCtrlEnum._value_],
         )
@@ -157,7 +165,9 @@ class Application:
         self.lists[ModLists.JOB_QUEUE.name].update(self.job_manager.job_queue)
 
     async def handle_remote_mod_list_select(self, event=None):
-        await self.handle_selection_update(self.lists[ModLists.REMOTE_MODS.name].get_first_selection())
+        await self.handle_selection_update(
+            self.lists[ModLists.REMOTE_MODS.name].get_first_selection()
+        )
 
     async def handle_installed_mod_list_select(self, event=None):
         await self.handle_selection_update(
@@ -206,12 +216,16 @@ class Application:
             self.main_frame.selection_icon_bitmap.SetBitmap(bitmap)
 
     async def handle_installed_mod_list_uninstall(self, event=None):
-        for selection in self.lists[ModLists.INSTALLED_MODS.name].get_selected_objects():
+        for selection in self.lists[
+            ModLists.INSTALLED_MODS.name
+        ].get_selected_objects():
             meta = self.manager.resolve_package_metadata(selection)
             await self.add_job(UninstallPackage, meta.package_reference)
 
     async def handle_downloaded_mod_list_install(self, event=None):
-        for selection in self.lists[ModLists.DOWNLOADED_MODS.name].get_selected_objects():
+        for selection in self.lists[
+            ModLists.DOWNLOADED_MODS.name
+        ].get_selected_objects():
             meta = self.manager.resolve_package_metadata(selection)
             reference = meta.package_reference
             if reference.version:
@@ -222,15 +236,21 @@ class Application:
                     self.manager.installed_packages(newest)
 
     async def handle_downloaded_mod_list_delete(self, event=None):
-        for selection in self.lists[ModLists.DOWNLOADED_MODS.name].get_selected_objects():
+        for selection in self.lists[
+            ModLists.DOWNLOADED_MODS.name
+        ].get_selected_objects():
             meta = self.manager.resolve_package_metadata(selection)
             reference = meta.package_reference
-            if self.main_frame.tabs_data[Tabs.MANAGER.value]["children"]["{}{}".format(ListCtrlEnums.DOWNLOADED._name_, "checkbox")].GetValue():
+            if self.main_frame.tabs_data[Tabs.MANAGER.value]["children"][
+                "{}{}".format(ListCtrlEnums.DOWNLOADED._name_, "checkbox")
+            ].GetValue():
                 reference = reference.without_version
             await self.add_job(DeletePackage, reference)
 
     async def handle_installed_mod_list_update_button(self, event=None):
-        self.main_frame.tabs_data[Tabs.MANAGER.value]['children'][Buttons.UPDATE.name].Disable()
+        self.main_frame.tabs_data[Tabs.MANAGER.value]["children"][
+            Buttons.UPDATE.name
+        ].Disable()
         await self.handle_mod_list_refresh()
         installed_packages = self.manager.installed_packages
         for package in self.manager.installed_packages:
@@ -241,7 +261,9 @@ class Application:
             latest = package.versions.latest.package_reference
             if latest not in installed_packages:
                 await self.add_job(DownloadAndInstallPackage, latest)
-        self.main_frame.tabs_data[Tabs.MANAGER.value]['children'][Buttons.UPDATE.name].Enable()
+        self.main_frame.tabs_data[Tabs.MANAGER.value]["children"][
+            Buttons.UPDATE.name
+        ].Enable()
 
     def handle_selection_thunderstore_button(self, event=None):
         meta = self.manager.resolve_package_metadata(self.current_selection)
@@ -249,73 +271,105 @@ class Application:
             webbrowser.open(meta.thunderstore_url)
 
     def bind_events(self):
-        remote_mod, remote_tab, remote_list = get_mod_and_tab_and_list_ctrl_from_mod(ModLists.REMOTE_MODS)
-        installed_mod, installed_tab, installed_list = get_mod_and_tab_and_list_ctrl_from_mod(ModLists.INSTALLED_MODS)
-        downloaded_mod, downloaded_tab, downloaded_list = get_mod_and_tab_and_list_ctrl_from_mod(ModLists.DOWNLOADED_MODS)
-        job_mod, job_tab, job_list = get_mod_and_tab_and_list_ctrl_from_mod(ModLists.JOB_QUEUE)
+        remote_mod, remote_tab, remote_list = get_mod_and_tab_and_list_ctrl_from_mod(
+            ModLists.REMOTE_MODS
+        )
+        installed_mod, installed_tab, installed_list = get_mod_and_tab_and_list_ctrl_from_mod(
+            ModLists.INSTALLED_MODS
+        )
+        downloaded_mod, downloaded_tab, downloaded_list = get_mod_and_tab_and_list_ctrl_from_mod(
+            ModLists.DOWNLOADED_MODS
+        )
+        job_mod, job_tab, job_list = get_mod_and_tab_and_list_ctrl_from_mod(
+            ModLists.JOB_QUEUE
+        )
         AsyncBind(
             wx.EVT_BUTTON,
             self.handle_mod_list_refresh,
-            self.main_frame.tabs_data[remote_tab.value]['children'][Buttons.REFRESH.name],
+            self.main_frame.tabs_data[remote_tab.value]["children"][
+                Buttons.REFRESH.name
+            ],
         )
-        self.main_frame.tabs_data[downloaded_tab.value]["children"]["{}{}".format(downloaded_list._name_, "checkbox")].Bind(
-            wx.EVT_CHECKBOX, self.refresh_downloaded_mod_list
-        )
+        self.main_frame.tabs_data[downloaded_tab.value]["children"][
+            "{}{}".format(downloaded_list._name_, "checkbox")
+        ].Bind(wx.EVT_CHECKBOX, self.refresh_downloaded_mod_list)
         self.main_frame.selection_thunderstore_button.Bind(
             wx.EVT_BUTTON, self.handle_selection_thunderstore_button
         )
         AsyncBind(
             wx.EVT_LIST_ITEM_SELECTED,
             self.handle_installed_mod_list_select,
-            self.main_frame.tabs_data[installed_tab.value]['children'][installed_list._name_],
+            self.main_frame.tabs_data[installed_tab.value]["children"][
+                installed_list._name_
+            ],
         )
         AsyncBind(
             wx.EVT_LIST_ITEM_SELECTED,
             self.handle_downloaded_mod_list_select,
-            self.main_frame.tabs_data[downloaded_tab.value]['children'][downloaded_list._name_],
+            self.main_frame.tabs_data[downloaded_tab.value]["children"][
+                downloaded_list._name_
+            ],
         )
         AsyncBind(
             wx.EVT_LIST_ITEM_SELECTED,
             self.handle_remote_mod_list_select,
-            self.main_frame.tabs_data[remote_tab.value]['children'][remote_list._name_],
+            self.main_frame.tabs_data[remote_tab.value]["children"][remote_list._name_],
         )
         AsyncBind(
             wx.EVT_BUTTON,
             self.handle_installed_mod_list_uninstall,
-            self.main_frame.tabs_data[installed_tab.value]['children'][Buttons.UNINSTALL.name],
+            self.main_frame.tabs_data[installed_tab.value]["children"][
+                Buttons.UNINSTALL.name
+            ],
         )
         AsyncBind(
             wx.EVT_BUTTON,
             self.handle_downloaded_mod_list_install,
-            self.main_frame.tabs_data[downloaded_tab.value]['children'][Buttons.INSTALL.name],
+            self.main_frame.tabs_data[downloaded_tab.value]["children"][
+                Buttons.INSTALL.name
+            ],
         )
         AsyncBind(
             wx.EVT_BUTTON,
             self.handle_downloaded_mod_list_delete,
-            self.main_frame.tabs_data[downloaded_tab.value]['children'][Buttons.DELETE.name],
+            self.main_frame.tabs_data[downloaded_tab.value]["children"][
+                Buttons.DELETE.name
+            ],
         )
         AsyncBind(
             wx.EVT_BUTTON,
             self.handle_mod_list_install,
-            self.main_frame.tabs_data[remote_tab.value]['children'][Buttons.INSTALL_SELECTED.name],
+            self.main_frame.tabs_data[remote_tab.value]["children"][
+                Buttons.INSTALL_SELECTED.name
+            ],
         )
         AsyncBind(
             wx.EVT_BUTTON,
             self.handle_installed_mod_list_export,
-            self.main_frame.tabs_data[installed_tab.value]['children'][Buttons.EXPORT.name],
+            self.main_frame.tabs_data[installed_tab.value]["children"][
+                Buttons.EXPORT.name
+            ],
         )
         AsyncBind(
             wx.EVT_BUTTON,
             self.handle_installed_mod_list_import,
-            self.main_frame.tabs_data[installed_tab.value]['children'][Buttons.IMPORT.name],
+            self.main_frame.tabs_data[installed_tab.value]["children"][
+                Buttons.IMPORT.name
+            ],
         )
         AsyncBind(
             wx.EVT_BUTTON,
             self.handle_installed_mod_list_update_button,
-            self.main_frame.tabs_data[installed_tab.value]['children'][Buttons.UPDATE.name],
+            self.main_frame.tabs_data[installed_tab.value]["children"][
+                Buttons.UPDATE.name
+            ],
         )
         AsyncBind(
-            wx.EVT_TEXT, self.handle_mod_list_search, self.main_frame.tabs_data[remote_tab.value]['children']["{}{}".format(remote_list._name_, "search")]
+            wx.EVT_TEXT,
+            self.handle_mod_list_search,
+            self.main_frame.tabs_data[remote_tab.value]["children"][
+                "{}{}".format(remote_list._name_, "search")
+            ],
         )
         AsyncBind(
             wx.EVT_BUTTON,
@@ -400,7 +454,9 @@ class Application:
         mod = ModLists.REMOTE_MODS
         tab, list_ctrl, _ = mod.value
         if query is None:
-            query = self.main_frame.tabs_data[tab.value]['children']["{}{}".format(list_ctrl._name_, "search")].GetValue()
+            query = self.main_frame.tabs_data[tab.value]["children"][
+                "{}{}".format(list_ctrl._name_, "search")
+            ].GetValue()
 
         def matches_query(package):
             matches_name = query.lower() in str(package.full_name).lower()
@@ -420,7 +476,9 @@ class Application:
         packages = self.manager.cached_packages
         mod = ModLists.DOWNLOADED_MODS
         tab, list_ctrl, _ = mod.value
-        if self.main_frame.tabs_data[tab.value]["children"]["{}{}".format(list_ctrl._name_, "checkbox")].GetValue():
+        if self.main_frame.tabs_data[tab.value]["children"][
+            "{}{}".format(list_ctrl._name_, "checkbox")
+        ].GetValue():
             packages = set([package.without_version for package in packages])
         packages = sorted(packages, key=lambda entry: entry.name)
         self.lists[mod.name].update(packages)
