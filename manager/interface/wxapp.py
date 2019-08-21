@@ -68,27 +68,19 @@ class ObjectList:
 
     def get_selected_objects(self):
         selection = self.element.GetFirstSelected()
-        if selection == -1:
-            return []
-
-        selections = [self.objects[selection]]
         while selection != -1:
+            yield self.objects[selection]
             selection = self.element.GetNextSelected(selection)
-            if selection != -1:
-                selections.append(self.objects[selection])
-
-        return selections
 
     def get_first_selection(self):
         selection = self.element.GetFirstSelected()
-        if selection == -1:
-            return None
-        return self.objects[selection]
+        if selection != -1:
+            return self.objects[selection]
 
     def resize_columns(self, *args, **kwargs):
         width, height = self.element.GetClientSize()
         column_width = int(float(width) / len(self.column_labels))
-        for index in range(len(self.column_labels)):
+        for index, _ in enumerate(self.column_labels):
             self.element.SetColumnWidth(index, column_width)
 
 
@@ -219,14 +211,12 @@ class Application:
             self.main_frame.selection_icon_bitmap.SetBitmap(bitmap)
 
     async def handle_installed_mod_list_uninstall(self, event=None):
-        selections = self.installed_mod_list.get_selected_objects()
-        for selection in selections:
+        for selection in self.installed_mod_list.get_selected_objects():
             meta = self.manager.resolve_package_metadata(selection)
             await self.add_job(UninstallPackage, meta.package_reference)
 
     async def handle_downloaded_mod_list_install(self, event=None):
-        selections = self.downloaded_mod_list.get_selected_objects()
-        for selection in selections:
+        for selection in self.downloaded_mod_list.get_selected_objects():
             meta = self.manager.resolve_package_metadata(selection)
             reference = meta.package_reference
             if reference.version:
@@ -237,8 +227,7 @@ class Application:
                     self.manager.installed_packages(newest)
 
     async def handle_downloaded_mod_list_delete(self, event=None):
-        selections = self.downloaded_mod_list.get_selected_objects()
-        for selection in selections:
+        for selection in self.downloaded_mod_list.get_selected_objects():
             meta = self.manager.resolve_package_metadata(selection)
             reference = meta.package_reference
             if self.main_frame.downloaded_mods_group_version_checkbox.GetValue():
@@ -387,8 +376,7 @@ class Application:
         await self.update_mod_list_content(query)
 
     async def handle_mod_list_install(self, event=None):
-        selections = self.remote_mod_list.get_selected_objects()
-        for selection in selections:
+        for selection in self.remote_mod_list.get_selected_objects():
             meta = self.manager.resolve_package_metadata(selection)
             await self.add_job(DownloadAndInstallPackage, meta.package_reference)
 
