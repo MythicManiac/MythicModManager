@@ -118,12 +118,7 @@ class Application:
             column_labels=[v.value for v in ListCtrlEnum._value_],
         )
 
-    def __init__(self):
-        self.app = WxAsyncApp()
-        self.main_frame = MainFrame(None)
-        for list_data in list(ModLists):
-            self.lists[list_data.name] = self.make_object_list(*list_data.value)
-
+    def get_risk_of_rain_path(self):
         risk_of_rain_path = get_install_path()
 
         if not risk_of_rain_path:
@@ -133,6 +128,15 @@ class Application:
                 wx.OK | wx.ICON_ERROR,
             )
             risk_of_rain_path = Path("risk-of-rain-2")
+        return risk_of_rain_path
+
+    def __init__(self):
+        self.app = WxAsyncApp()
+        self.main_frame = MainFrame(None)
+        for list_data in list(ModLists):
+            self.lists[list_data.name] = self.make_object_list(*list_data.value)
+
+        risk_of_rain_path = self.get_risk_of_rain_path()
 
         self.configuration = ModManagerConfiguration(
             thunderstore_url="https://thunderstore.io/",
@@ -148,10 +152,15 @@ class Application:
         self.job_manager.bind_on_job_finished(self.refresh_job_list)
 
         self.manager = ModManager(self.configuration, self.job_manager)
-        self.manager.bind_on_install(self.refresh_installed_mod_list)
-        self.manager.bind_on_uninstall(self.refresh_installed_mod_list)
-        self.manager.bind_on_download(self.refresh_downloaded_mod_list)
-        self.manager.bind_on_delete(self.refresh_downloaded_mod_list)
+        for attr, func in [
+            ("install", self.refresh_installed_mod_list),
+            ("uninstall", self.refresh_installed_mod_list),
+            ("download", self.refresh_downloaded_mod_list),
+            ("delete", self.refresh_downloaded_mod_list),
+        ]:
+            binding_func = getattr(self.manager, "bind_on_{}".format(attr))
+            if binding_func:
+                binding_func(func)
 
         self.current_selection = PackageMetadata.empty()
         self.main_frame.selection_description.SetLabel("")
@@ -164,20 +173,13 @@ class Application:
     def refresh_job_list(self):
         self.lists[ModLists.JOB_QUEUE.name].update(self.job_manager.job_queue)
 
-    async def handle_remote_mod_list_select(self, event=None):
-        await self.handle_selection_update(
-            self.lists[ModLists.REMOTE_MODS.name].get_first_selection()
-        )
+    def make_list_selection_update_function(self, ModList):
+        async def handle_list_select(event=None):
+            await self.handle_selection_update(
+                self.lists[ModList.name].get_first_selection()
+            )
 
-    async def handle_installed_mod_list_select(self, event=None):
-        await self.handle_selection_update(
-            self.lists[ModLists.INSTALLED_MODS.name].get_first_selection()
-        )
-
-    async def handle_downloaded_mod_list_select(self, event=None):
-        await self.handle_selection_update(
-            self.lists[ModLists.DOWNLOADED_MODS.name].get_first_selection()
-        )
+        return handle_list_select
 
     async def handle_selection_update(self, selection):
         if not selection:
@@ -296,25 +298,18 @@ class Application:
         self.main_frame.selection_thunderstore_button.Bind(
             wx.EVT_BUTTON, self.handle_selection_thunderstore_button
         )
-        AsyncBind(
-            wx.EVT_LIST_ITEM_SELECTED,
-            self.handle_installed_mod_list_select,
-            self.main_frame.tabs_data[installed_tab.value]["children"][
-                installed_list._name_
-            ],
-        )
-        AsyncBind(
-            wx.EVT_LIST_ITEM_SELECTED,
-            self.handle_downloaded_mod_list_select,
-            self.main_frame.tabs_data[downloaded_tab.value]["children"][
-                downloaded_list._name_
-            ],
-        )
-        AsyncBind(
-            wx.EVT_LIST_ITEM_SELECTED,
-            self.handle_remote_mod_list_select,
-            self.main_frame.tabs_data[remote_tab.value]["children"][remote_list._name_],
-        )
+        for mod, tab, list_ctrl in [
+            [installed_mod, installed_tab, installed_list],
+            [downloaded_mod, downloaded_tab, downloaded_list],
+            [remote_mod, remote_tab, remote_list]
+        ]:
+            AsyncBind(
+                wx.EVT_LIST_ITEM_SELECTED,
+                self.make_list_selection_update_function(mod),
+                self.main_frame.tabs_data[tab.value]["children"][
+                    list_ctrl._name_
+                ],
+            )
         AsyncBind(
             wx.EVT_BUTTON,
             self.handle_installed_mod_list_uninstall,
