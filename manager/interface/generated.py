@@ -251,22 +251,96 @@ class MainFrame(wx.Frame):
         )
         return title
 
-    def __do_layout(self):
-        # begin wxGlade: MainFrame.__do_layout
-        root_sizer = wx.BoxSizer(wx.VERTICAL)
+    def get_progress_bar_sizer(self):
         progress_bars_sizer = wx.BoxSizer(wx.VERTICAL)
-        main_content_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        progress_bars_sizer.Add(self.progress_bar_big, 1, wx.EXPAND, 0)
+        progress_bars_sizer.Add(self.progress_bar_small, 0, wx.EXPAND, 0)
+        return progress_bars_sizer
+
+    def get_selection_info_sizer(self):
         selection_info_sizer = wx.BoxSizer(wx.VERTICAL)
         selection_info_content_sizer = wx.BoxSizer(wx.VERTICAL)
         selection_info_buttons_sizer = wx.BoxSizer(wx.VERTICAL)
         selection_info_panel_sizer = wx.BoxSizer(wx.VERTICAL)
+        selection_info_sizer.Add(self.selection_icon_bitmap, 0, wx.EXPAND, 0)
+        selection_info_panel_sizer.Add(self.selection_title, 50, 0, 0)
+        selection_info_panel_sizer.Add(self.selection_description, 60, 0, 0)
+        selection_info_panel_separator = wx.StaticLine(
+            self.selection_info_panel, wx.ID_ANY
+        )
+        selection_info_panel_sizer.Add(selection_info_panel_separator, 1, wx.EXPAND, 0)
+        selection_info_panel_sizer.Add(self.selection_version, 10, 0, 0)
+        selection_info_panel_sizer.Add(self.selection_download_count, 10, wx.ALL, 0)
+        self.selection_info_panel.SetSizer(selection_info_panel_sizer)
+        selection_info_content_sizer.Add(self.selection_info_panel, 1, wx.EXPAND, 0)
+        selection_info_buttons_sizer.Add(
+            self.selection_thunderstore_button, 1, wx.EXPAND, 0
+        )
+        selection_info_buttons_sizer.Add(self.launch_game_button, 0, wx.EXPAND, 0)
+        selection_info_content_sizer.Add(selection_info_buttons_sizer, 0, wx.EXPAND, 0)
+        selection_info_sizer.Add(selection_info_content_sizer, 1, wx.EXPAND, 0)   
+        return selection_info_sizer
+        
+
+    def get_main_content_sizer(self):
+        main_content_sizer = wx.BoxSizer(wx.HORIZONTAL)     
+        main_content_sizer.Add(self.main_content_notebook, 1, wx.EXPAND, 0)
+        main_content_sizer.Add(self.get_selection_info_sizer(), 0, wx.EXPAND, 0)
+        return main_content_sizer
+
+    def __do_layout(self):
+        # begin wxGlade: MainFrame.__do_layout
+        for tab in list(Tabs):
+            self.main_content_notebook.AddPage(self.tabs[tab.value], tab.value)
+               
+        root_sizer = wx.BoxSizer(wx.VERTICAL)
+        root_sizer.Add(self.get_main_content_sizer(), 95, wx.EXPAND, 0)
+        root_sizer.Add(self.get_progress_bar_sizer(), 8, wx.EXPAND, 0)
+        self.SetSizer(root_sizer)
+
         about_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        about_sizer.Add(self.about_github_link, 0, wx.ALIGN_CENTER, 0)
+        self.tabs[Tabs.ABOUT.value].SetSizer(about_sizer)
+
         job_queue_sizer = wx.BoxSizer(wx.VERTICAL)
+        job_queue_sizer.Add(self.tabs_data[Tabs.JOB_QUEUE.value]['children'][ListCtrlEnums.JOBS._name_], 1, wx.EXPAND, 0)
+        self.tabs[Tabs.JOB_QUEUE.value].SetSizer(job_queue_sizer)
+
         mod_list_sizer = wx.BoxSizer(wx.VERTICAL)
         sizer_1 = wx.BoxSizer(wx.HORIZONTAL)
+        for button in [
+            Buttons.REFRESH,
+            Buttons.INSTALL_SELECTED,
+        ]:
+            sizer_1.Add(
+                self.tabs_data[Tabs.MOD_LIST.value]["children"][button.name],
+                1,
+                wx.EXPAND,
+                0,
+            )
+        mod_list_sizer.Add(sizer_1, 0, wx.EXPAND, 0)
+        mod_list_sizer.Add(self.mod_list_search, 0, wx.EXPAND, 0)
+        mod_list_sizer.Add(self.tabs_data[Tabs.MOD_LIST.value]['children'][ListCtrlEnums.MODS._name_], 1, wx.EXPAND, 0)
+        self.tabs[Tabs.MOD_LIST.value].SetSizer(mod_list_sizer)
+
         manager_sizer = wx.BoxSizer(wx.VERTICAL)
         downloaded_mods_sizer = wx.BoxSizer(wx.VERTICAL)
         downloaded_mods_buttons_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        downloaded_mods_title = self.get_title_sizer(
+            self.tabs[Tabs.MANAGER.value], "Downloaded Mods"
+        )
+        downloaded_mods_sizer.Add(downloaded_mods_title, 0, 0, 0)
+        for button in [Buttons.INSTALL, Buttons.DELETE]:
+            downloaded_mods_buttons_sizer.Add(
+                self.tabs_data[Tabs.MANAGER.value]["children"][button.name], 1, 0, 0
+            )
+        downloaded_mods_buttons_sizer.Add(
+            self.downloaded_mods_group_version_checkbox, 0, wx.ALIGN_CENTER | wx.ALL, 4
+        )
+        downloaded_mods_sizer.Add(downloaded_mods_buttons_sizer, 0, wx.EXPAND, 0)
+        downloaded_mods_sizer.Add(self.tabs_data[Tabs.MANAGER.value]['children'][ListCtrlEnums.DOWNLOADED._name_], 1, wx.EXPAND, 0)
+        manager_sizer.Add(downloaded_mods_sizer, 1, wx.EXPAND, 0)
+
         installed_mods_sizer = wx.BoxSizer(wx.VERTICAL)
         installed_mods_buttons_sizer = wx.BoxSizer(wx.HORIZONTAL)
         installed_mods_title = self.get_title_sizer(
@@ -288,65 +362,8 @@ class MainFrame(wx.Frame):
         installed_mods_sizer.Add(installed_mods_buttons_sizer, 0, wx.EXPAND, 0)
         installed_mods_sizer.Add(self.tabs_data[Tabs.MANAGER.value]['children'][ListCtrlEnums.INSTALLED._name_], 1, wx.EXPAND, 0)
         manager_sizer.Add(installed_mods_sizer, 1, wx.EXPAND, 0)
-        downloaded_mods_title = self.get_title_sizer(
-            self.tabs[Tabs.MANAGER.value], "Downloaded Mods"
-        )
-        downloaded_mods_sizer.Add(downloaded_mods_title, 0, 0, 0)
-        for button in [Buttons.INSTALL, Buttons.DELETE]:
-            downloaded_mods_buttons_sizer.Add(
-                self.tabs_data[Tabs.MANAGER.value]["children"][button.name], 1, 0, 0
-            )
-        downloaded_mods_buttons_sizer.Add(
-            self.downloaded_mods_group_version_checkbox, 0, wx.ALIGN_CENTER | wx.ALL, 4
-        )
-        downloaded_mods_sizer.Add(downloaded_mods_buttons_sizer, 0, wx.EXPAND, 0)
-        downloaded_mods_sizer.Add(self.tabs_data[Tabs.MANAGER.value]['children'][ListCtrlEnums.DOWNLOADED._name_], 1, wx.EXPAND, 0)
-        manager_sizer.Add(downloaded_mods_sizer, 1, wx.EXPAND, 0)
         self.tabs[Tabs.MANAGER.value].SetSizer(manager_sizer)
-        for button in [
-            Buttons.REFRESH,
-            Buttons.INSTALL_SELECTED,
-        ]:
-            sizer_1.Add(
-                self.tabs_data[Tabs.MOD_LIST.value]["children"][button.name],
-                1,
-                wx.EXPAND,
-                0,
-            )
-        mod_list_sizer.Add(sizer_1, 0, wx.EXPAND, 0)
-        mod_list_sizer.Add(self.mod_list_search, 0, wx.EXPAND, 0)
-        mod_list_sizer.Add(self.tabs_data[Tabs.MOD_LIST.value]['children'][ListCtrlEnums.MODS._name_], 1, wx.EXPAND, 0)
-        self.tabs[Tabs.MOD_LIST.value].SetSizer(mod_list_sizer)
-        job_queue_sizer.Add(self.tabs_data[Tabs.JOB_QUEUE.value]['children'][ListCtrlEnums.JOBS._name_], 1, wx.EXPAND, 0)
-        self.tabs[Tabs.JOB_QUEUE.value].SetSizer(job_queue_sizer)
-        about_sizer.Add(self.about_github_link, 0, wx.ALIGN_CENTER, 0)
-        self.tabs[Tabs.ABOUT.value].SetSizer(about_sizer)
-        for tab in list(Tabs):
-            self.main_content_notebook.AddPage(self.tabs[tab.value], tab.value)
-        main_content_sizer.Add(self.main_content_notebook, 1, wx.EXPAND, 0)
-        selection_info_sizer.Add(self.selection_icon_bitmap, 0, wx.EXPAND, 0)
-        selection_info_panel_sizer.Add(self.selection_title, 50, 0, 0)
-        selection_info_panel_sizer.Add(self.selection_description, 60, 0, 0)
-        selection_info_panel_separator = wx.StaticLine(
-            self.selection_info_panel, wx.ID_ANY
-        )
-        selection_info_panel_sizer.Add(selection_info_panel_separator, 1, wx.EXPAND, 0)
-        selection_info_panel_sizer.Add(self.selection_version, 10, 0, 0)
-        selection_info_panel_sizer.Add(self.selection_download_count, 10, wx.ALL, 0)
-        self.selection_info_panel.SetSizer(selection_info_panel_sizer)
-        selection_info_content_sizer.Add(self.selection_info_panel, 1, wx.EXPAND, 0)
-        selection_info_buttons_sizer.Add(
-            self.selection_thunderstore_button, 1, wx.EXPAND, 0
-        )
-        selection_info_buttons_sizer.Add(self.launch_game_button, 0, wx.EXPAND, 0)
-        selection_info_content_sizer.Add(selection_info_buttons_sizer, 0, wx.EXPAND, 0)
-        selection_info_sizer.Add(selection_info_content_sizer, 1, wx.EXPAND, 0)
-        main_content_sizer.Add(selection_info_sizer, 0, wx.EXPAND, 0)
-        root_sizer.Add(main_content_sizer, 95, wx.EXPAND, 0)
-        progress_bars_sizer.Add(self.progress_bar_big, 1, wx.EXPAND, 0)
-        progress_bars_sizer.Add(self.progress_bar_small, 0, wx.EXPAND, 0)
-        root_sizer.Add(progress_bars_sizer, 8, wx.EXPAND, 0)
-        self.SetSizer(root_sizer)
+        
         self.Layout()
         # end wxGlade
 
