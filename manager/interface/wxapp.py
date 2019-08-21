@@ -18,7 +18,7 @@ from ..utils.log import log_exception
 from ..utils.install_finder import get_install_path
 from ..api.types import PackageReference
 
-from .generated import MainFrame
+from .generated import MainFrame, Tabs, Buttons, ListCtrlEnums
 
 
 class ObjectList:
@@ -98,28 +98,20 @@ class CopyableDialog(wx.Dialog):
 
 
 class Application:
+    def make_object_list(self, TabEnum, ListCtrlEnum):
+        return ObjectList(
+            element=self.main_frame.tabs_data[TabEnum.value]['children'][ListCtrlEnum._name_],
+            columns=[v.name.lower() for v in ListCtrlEnum._value_],
+            column_labels=[v.value for v in ListCtrlEnum._value_],
+        )
+
     def __init__(self):
         self.app = WxAsyncApp()
         self.main_frame = MainFrame(None)
-        self.remote_mod_list = ObjectList(
-            element=self.main_frame.mod_list_list,
-            columns=("name", "owner", "description", "latest_version", "downloads"),
-        )
-        self.installed_mod_list = ObjectList(
-            element=self.main_frame.installed_mods_list,
-            columns=("name", "namespace", "version"),
-            column_labels=("Name", "Author", "Version"),
-        )
-        self.downloaded_mod_list = ObjectList(
-            element=self.main_frame.downloaded_mods_list,
-            columns=("name", "namespace", "version"),
-            column_labels=("Name", "Author", "Version"),
-        )
-        self.job_queue_list = ObjectList(
-            element=self.main_frame.job_queue_list,
-            columns=("name", "parameters_str"),
-            column_labels=("Task", "Parameters"),
-        )
+        self.remote_mod_list = self.make_object_list(Tabs.MOD_LIST, ListCtrlEnums.MODS)
+        self.installed_mod_list = self.make_object_list(Tabs.MANAGER, ListCtrlEnums.INSTALLED)
+        self.downloaded_mod_list = self.make_object_list(Tabs.MANAGER, ListCtrlEnums.DOWNLOADED)
+        self.job_queue_list = self.make_object_list(Tabs.JOB_QUEUE, ListCtrlEnums.JOBS)
 
         risk_of_rain_path = get_install_path()
 
@@ -257,7 +249,7 @@ class Application:
         AsyncBind(
             wx.EVT_BUTTON,
             self.handle_mod_list_refresh,
-            self.main_frame.mod_list_refresh_button,
+            self.main_frame.tabs_data[Tabs.MOD_LIST.value]['children'][Buttons.REFRESH.name],
         )
         self.main_frame.downloaded_mods_group_version_checkbox.Bind(
             wx.EVT_CHECKBOX, self.refresh_downloaded_mod_list
@@ -268,52 +260,52 @@ class Application:
         AsyncBind(
             wx.EVT_LIST_ITEM_SELECTED,
             self.handle_installed_mod_list_select,
-            self.main_frame.installed_mods_list,
+            self.main_frame.tabs_data[Tabs.MANAGER.value]['children'][ListCtrlEnums.INSTALLED._name_],
         )
         AsyncBind(
             wx.EVT_LIST_ITEM_SELECTED,
             self.handle_downloaded_mod_list_select,
-            self.main_frame.downloaded_mods_list,
+            self.main_frame.tabs_data[Tabs.MANAGER.value]['children'][ListCtrlEnums.DOWNLOADED._name_],
         )
         AsyncBind(
             wx.EVT_LIST_ITEM_SELECTED,
             self.handle_remote_mod_list_select,
-            self.main_frame.mod_list_list,
+            self.main_frame.tabs_data[Tabs.MOD_LIST.value]['children'][ListCtrlEnums.MODS._name_],
         )
         AsyncBind(
             wx.EVT_BUTTON,
             self.handle_installed_mod_list_uninstall,
-            self.main_frame.installed_mods_uninstall_button,
+            self.main_frame.tabs_data[Tabs.MANAGER.value]['children'][Buttons.UNINSTALL.name],
         )
         AsyncBind(
             wx.EVT_BUTTON,
             self.handle_downloaded_mod_list_install,
-            self.main_frame.downloaded_mods_install_button,
+            self.main_frame.tabs_data[Tabs.MANAGER.value]['children'][Buttons.INSTALL.name],
         )
         AsyncBind(
             wx.EVT_BUTTON,
             self.handle_downloaded_mod_list_delete,
-            self.main_frame.downloaded_mods_delete_button,
+            self.main_frame.tabs_data[Tabs.MANAGER.value]['children'][Buttons.DELETE.name],
         )
         AsyncBind(
             wx.EVT_BUTTON,
             self.handle_mod_list_install,
-            self.main_frame.mod_list_install_button,
+            self.main_frame.tabs_data[Tabs.MOD_LIST.value]['children'][Buttons.INSTALL_SELECTED.name],
         )
         AsyncBind(
             wx.EVT_BUTTON,
             self.handle_installed_mod_list_export,
-            self.main_frame.installed_mods_export_button,
+            self.main_frame.tabs_data[Tabs.MANAGER.value]['children'][Buttons.EXPORT.name],
         )
         AsyncBind(
             wx.EVT_BUTTON,
             self.handle_installed_mod_list_import,
-            self.main_frame.installed_mods_import_button,
+            self.main_frame.tabs_data[Tabs.MANAGER.value]['children'][Buttons.IMPORT.name],
         )
         AsyncBind(
             wx.EVT_BUTTON,
             self.handle_installed_mod_list_update_button,
-            self.main_frame.installed_mods_update_button,
+            self.main_frame.tabs_data[Tabs.MANAGER.value]['children'][Buttons.UPDATE.name],
         )
         AsyncBind(
             wx.EVT_TEXT, self.handle_mod_list_search, self.main_frame.mod_list_search
