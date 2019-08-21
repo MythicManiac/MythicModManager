@@ -2,6 +2,8 @@ import wx
 import json
 import webbrowser
 
+from os.path import dirname
+
 from wxasync import WxAsyncApp, AsyncBind, StartCoroutine
 from asyncio.events import get_event_loop
 from pathlib import Path
@@ -138,12 +140,16 @@ class Application:
         risk_of_rain_path = get_install_path()
 
         if not risk_of_rain_path:
-            wx.MessageBox(
-                "Failed to detect Risk of Rain 2 path. Add it to config.toml",
-                "Error",
-                wx.OK | wx.ICON_ERROR,
-            )
-            risk_of_rain_path = Path("risk-of-rain-2")
+            with wx.FileDialog(
+                self.main_frame,
+                "Please locate Risk of Rain 2.exe",
+                wildcard="Risk of Rain 2.exe",
+                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+            ) as fileDialog:
+                if fileDialog.ShowModal() == wx.ID_CANCEL:
+                    return  # the user changed their mind
+                # Proceed loading the file chosen by the user
+                risk_of_rain_path = Path(dirname(fileDialog.GetPath()))
 
         self.configuration = ModManagerConfiguration(
             thunderstore_url="https://thunderstore.io/",
