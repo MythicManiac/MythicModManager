@@ -222,12 +222,12 @@ class Application:
         for selection in self.downloaded_mod_list.get_selected_objects():
             meta = self.manager.resolve_package_metadata(selection)
             reference = meta.package_reference
-            if self.main_frame.downloaded_mods_group_version_checkbox.GetValue():
+            if self.main_frame.tabs_data[Tabs.MANAGER.value]["children"]["{}{}".format(ListCtrlEnums.DOWNLOADED._name_, "checkbox")].GetValue():
                 reference = reference.without_version
             await self.add_job(DeletePackage, reference)
 
     async def handle_installed_mod_list_update_button(self, event=None):
-        self.main_frame.installed_mods_update_button.Disable()
+        self.main_frame.tabs_data[Tabs.MANAGER.value]['children'][Buttons.UPDATE.name].Disable()
         await self.handle_mod_list_refresh()
         installed_packages = self.manager.installed_packages
         for package in self.manager.installed_packages:
@@ -238,7 +238,7 @@ class Application:
             latest = package.versions.latest.package_reference
             if latest not in installed_packages:
                 await self.add_job(DownloadAndInstallPackage, latest)
-        self.main_frame.installed_mods_update_button.Enable()
+        self.main_frame.tabs_data[Tabs.MANAGER.value]['children'][Buttons.UPDATE.name].Enable()
 
     def handle_selection_thunderstore_button(self, event=None):
         meta = self.manager.resolve_package_metadata(self.current_selection)
@@ -251,7 +251,7 @@ class Application:
             self.handle_mod_list_refresh,
             self.main_frame.tabs_data[Tabs.MOD_LIST.value]['children'][Buttons.REFRESH.name],
         )
-        self.main_frame.downloaded_mods_group_version_checkbox.Bind(
+        self.main_frame.tabs_data[Tabs.MANAGER.value]["children"]["{}{}".format(ListCtrlEnums.DOWNLOADED._name_, "checkbox")].Bind(
             wx.EVT_CHECKBOX, self.refresh_downloaded_mod_list
         )
         self.main_frame.selection_thunderstore_button.Bind(
@@ -308,7 +308,7 @@ class Application:
             self.main_frame.tabs_data[Tabs.MANAGER.value]['children'][Buttons.UPDATE.name],
         )
         AsyncBind(
-            wx.EVT_TEXT, self.handle_mod_list_search, self.main_frame.mod_list_search
+            wx.EVT_TEXT, self.handle_mod_list_search, self.main_frame.tabs_data[Tabs.MOD_LIST.value]['children']["{}{}".format(ListCtrlEnums.MODS._name_, "search")]
         )
         AsyncBind(
             wx.EVT_BUTTON,
@@ -390,7 +390,7 @@ class Application:
 
     async def update_mod_list_content(self, query=None):
         if query is None:
-            query = self.main_frame.mod_list_search.GetValue()
+            query = self.main_frame.tabs_data[Tabs.MOD_LIST.value]['children']["{}{}".format(ListCtrlEnums.MODS._name_, "search")].GetValue()
 
         def matches_query(package):
             matches_name = query.lower() in str(package.full_name).lower()
@@ -408,7 +408,7 @@ class Application:
 
     def refresh_downloaded_mod_list(self, event=None):
         packages = self.manager.cached_packages
-        if self.main_frame.downloaded_mods_group_version_checkbox.GetValue():
+        if self.main_frame.tabs_data[Tabs.MANAGER.value]["children"]["{}{}".format(ListCtrlEnums.DOWNLOADED._name_, "checkbox")].GetValue():
             packages = set([package.without_version for package in packages])
         packages = sorted(packages, key=lambda entry: entry.name)
         self.downloaded_mod_list.update(packages)
