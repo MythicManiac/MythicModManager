@@ -20,7 +20,8 @@ from ..utils.log import log_exception
 from ..utils.install_finder import get_install_path
 from ..api.types import PackageReference
 
-from .generated import MainFrame, Tabs, Buttons, ListCtrlEnums, ModLists
+from .generated import MainFrame
+from .enums import *
 
 
 def get_mod_and_tab_and_list_ctrl_from_mod(Mod):
