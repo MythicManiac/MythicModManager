@@ -29,6 +29,13 @@ class DownloadAndInstallPackage(PackageJob):
         await self.manager.download_and_install_package(self.reference, progress)
 
 
+class DownloadPackage(PackageJob):
+    name = "Download package"
+
+    async def execute(self, progress):
+        await self.manager.download_package(self.reference, progress)
+
+
 class InstallPackage(PackageJob):
     name = "Install package"
 

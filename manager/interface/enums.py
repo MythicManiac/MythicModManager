@@ -29,6 +29,7 @@ class Buttons(Enum):
     DELETE = "delete"
     REFRESH = "refresh"
     INSTALL_SELECTED = "install selected"
+    DOWNLOAD_SELECTED = "download selected"
     DETAILS = "more metails"
     LAUNCH = "launch game"
 

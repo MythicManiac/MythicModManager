@@ -4,10 +4,10 @@ from ..utils.log import log_exception
 
 
 class JobManager:
-    def __init__(self, big_progress_bar, small_progress_bar):
+    def __init__(self, queue_progress_bar, task_progress_bar):
         self.job_queue = []
-        self.big_progress_bar = big_progress_bar
-        self.small_progress_bar = small_progress_bar
+        self.queue_progress_bar = queue_progress_bar
+        self.task_progress_bar = task_progress_bar
         self.on_job_added_callbacks = []
         self.on_job_finished_callbacks = []
         self.current_batch_size = 0
@@ -24,10 +24,10 @@ class JobManager:
         for callback in self.on_job_added_callbacks:
             callback()
 
-    async def update_big_progress_bar(self):
+    async def update_queue_progress_bar(self):
         completed_tasks = self.current_batch_size - len(self.job_queue)
         percentage = float(completed_tasks) / self.current_batch_size
-        self.big_progress_bar.SetValue(percentage * 1000)
+        self.queue_progress_bar.SetValue(percentage * 1000)
 
     async def worker(self):
         while True:
@@ -41,10 +41,10 @@ class JobManager:
         while True:
             if self.job_queue:
                 job = self.job_queue.pop(0)
-                self.small_progress_bar.SetValue(0)
-                await job.execute(self.small_progress_bar)
-                self.small_progress_bar.SetValue(1000)
-                await self.update_big_progress_bar()
+                self.task_progress_bar.SetValue(0)
+                await job.execute(self.task_progress_bar)
+                self.task_progress_bar.SetValue(1000)
+                await self.update_queue_progress_bar()
                 for callback in self.on_job_finished_callbacks:
                     callback()
             await asyncio.sleep(0.05)

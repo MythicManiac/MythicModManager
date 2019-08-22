@@ -15,6 +15,7 @@ from ..system.jobs import (
     InstallPackage,
     UninstallPackage,
     DeletePackage,
+    DownloadPackage
 )
 from ..utils.log import log_exception
 from ..utils.install_finder import get_install_path
@@ -22,93 +23,16 @@ from ..api.types import PackageReference
 
 from .generated import MainFrame
 from .enums import *
+from .object_list import ObjectList
+from .copyable_dialog import CopyableDialog
 
 
 def get_mod_and_tab_and_list_ctrl_from_mod(Mod):
     tab, list_ctrl, _ = Mod.value
     return Mod, tab, list_ctrl
 
-
-class ObjectList:
-    def __init__(self, element, columns, column_labels=None):
-        self.current_sort = 1
-        self.element = element
-        self.columns = columns
-        self.column_labels = (
-            column_labels
-            if column_labels
-            else [x.capitalize().replace("_", " ") for x in columns]
-        )
-        self.objects = []
-
-        self.element.ClearAll()
-        for index, label in enumerate(self.column_labels):
-            self.element.InsertColumn(index, label)
-
-        self.resize_columns()
-        self.bind_events()
-
-    def bind_events(self):
-        self.element.Bind(wx.EVT_SIZE, self.resize_columns)
-        self.element.Bind(wx.EVT_LIST_COL_CLICK, self.sort_list)
-
-    def sort_list(self, event):
-        col_index = event.GetColumn() + 1
-        self.current_sort = -col_index if self.current_sort == col_index else col_index
-        self.update(self.objects)
-
-    def update(self, new_objects):
-        def get_sort_key(entry):
-            key = getattr(entry, self.columns[abs(self.current_sort) - 1], None)
-            return key or ""
-
-        new_objects = sorted(
-            new_objects, key=get_sort_key, reverse=self.current_sort < 0
-        )
-
-        self.element.DeleteAllItems()
-        for row, entry in enumerate(new_objects):
-            label = str(getattr(entry, self.columns[0], None) or "")
-            self.element.InsertItem(row, label)
-            for i in range(1, len(self.columns)):
-                item = wx.ListItem()
-                item.SetId(row)
-                item.SetColumn(i)
-                label = str(getattr(entry, self.columns[i], None) or "")
-                item.SetText(label)
-                self.element.SetItem(item)
-        self.objects = new_objects
-
-    def get_selected_objects(self):
-        selection = self.element.GetFirstSelected()
-        while selection != -1:
-            yield self.objects[selection]
-            selection = self.element.GetNextSelected(selection)
-
-    def get_first_selection(self):
-        selection = self.element.GetFirstSelected()
-        if selection != -1:
-            return self.objects[selection]
-
-    def resize_columns(self, *args, **kwargs):
-        width, height = self.element.GetClientSize()
-        column_width = int(float(width) / len(self.column_labels))
-        for index, _ in enumerate(self.column_labels):
-            self.element.SetColumnWidth(index, column_width)
-
-
-class CopyableDialog(wx.Dialog):
-    def __init__(self, parent, title, text):
-        wx.Dialog.__init__(self, parent, title=title)
-        text = wx.TextCtrl(
-            parent=self,
-            value=text,
-            style=(wx.TE_READONLY | wx.TE_MULTILINE | wx.TE_BESTWRAP),
-        )
-        text.SetSelection(-1, -1)
-        self.ShowModal()
-        self.Destroy()
-
+def setup_mod_manager_config(path):
+    return ModManagerConfiguration(path)
 
 class Application:
     lists = {}
@@ -142,15 +66,10 @@ class Application:
 
         risk_of_rain_path = self.get_risk_of_rain_path()
 
-        self.configuration = ModManagerConfiguration(
-            thunderstore_url="https://thunderstore.io/",
-            mod_cache_path="mod-cache/",
-            mod_install_path=risk_of_rain_path / "BepInEx" / "plugins",
-            risk_of_rain_path=risk_of_rain_path,
-        )
+        self.configuration = setup_mod_manager_config(risk_of_rain_path)
         self.job_manager = JobManager(
-            big_progress_bar=self.main_frame.progress_bar_big,
-            small_progress_bar=self.main_frame.progress_bar_small,
+            queue_progress_bar=self.main_frame.progress_bar_big,
+            task_progress_bar=self.main_frame.progress_bar_small,
         )
         self.job_manager.bind_on_job_added(self.refresh_job_list)
         self.job_manager.bind_on_job_finished(self.refresh_job_list)
@@ -222,7 +141,7 @@ class Application:
             self.main_frame.selection_icon_bitmap.SetBitmap(bitmap)
 
     def make_package_management_function(self, Mod, Package):
-        async def handle_package_job(event=None):
+        async def handle_package_job(event=None, button=None, *args, **kwargs):
             for selection in self.lists[Mod.name].get_selected_objects():
                 meta = self.manager.resolve_package_metadata(selection)
                 reference = meta.package_reference
@@ -297,6 +216,7 @@ class Application:
         tabs[remote_tab].extend([
             [Buttons.REFRESH, self.handle_mod_list_refresh, "Refreshing..."],
             [Buttons.INSTALL_SELECTED, self.handle_mod_list_install, "Installing..."],
+            [Buttons.DOWNLOAD_SELECTED, self.handle_mod_list_download, "Downloading..."]
         ])
         tabs[installed_tab].extend([
             [
@@ -441,6 +361,12 @@ class Application:
         for selection in self.lists[mod.name].get_selected_objects():
             meta = self.manager.resolve_package_metadata(selection)
             await self.add_job(DownloadAndInstallPackage, meta.package_reference)
+
+    async def handle_mod_list_download(self, event=None, button=None, *args, **kwargs):
+        mod = ModLists.REMOTE_MODS
+        for selection in self.lists[mod.name].get_selected_objects():
+            meta = self.manager.resolve_package_metadata(selection)
+            await self.add_job(DownloadPackage, meta.package_reference)
 
     async def handle_mod_list_refresh(self, event=None, button=None, *args, **kwargs):
         if event:

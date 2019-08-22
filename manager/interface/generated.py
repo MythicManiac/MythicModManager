@@ -180,7 +180,7 @@ class MainFrame(wx.Frame):
                 tab_data,
                 None,
                 self.make_buttons_for_tab_and_tab_data_from_enum_list(
-                    [Buttons.REFRESH, Buttons.INSTALL_SELECTED], tab, tab_data
+                    [Buttons.REFRESH, Buttons.INSTALL_SELECTED, Buttons.DOWNLOAD_SELECTED], tab, tab_data
                 ),
                 ListCtrlEnums.MODS,
                 has_search=True,

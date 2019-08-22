@@ -17,11 +17,11 @@ from .jobs import DownloadAndInstallPackage
 
 class ModManagerConfiguration:
     def __init__(
-        self, thunderstore_url, mod_cache_path, risk_of_rain_path, mod_install_path
+        self, risk_of_rain_path, mod_install_path=None, thunderstore_url="https://thunderstore.io/", mod_cache_path="mod-cache/"
     ):
         self.thunderstore_url = thunderstore_url
         self.mod_cache_path = Path(mod_cache_path).resolve()
-        self.mod_install_path = Path(mod_install_path).resolve()
+        self.mod_install_path = Path(mod_install_path if mod_install_path else risk_of_rain_path / "BepInEx" / "plugins").resolve()
         self.risk_of_rain_path = Path(risk_of_rain_path).resolve()
 
 
@@ -372,10 +372,12 @@ class ModManager:
             print("Done!")
             for callback in self.on_uninstall_callbacks:
                 callback()
+            return True
         else:
             for package in self.installed_packages:
                 if package.is_same_package(reference):
-                    await self.uninstall_package(package)
+                    if not await self.uninstall_package(package):
+                        print(f"Unable to uninstall {reference}")
 
     async def download_and_install_package(self, reference, progress):
 
