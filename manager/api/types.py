@@ -103,13 +103,15 @@ class PackageReference:
         if isinstance(unparsed, PackageReference):
             return unparsed
 
+        error = f"Invalid package reference string: '{unparsed}'"
+
         version_string = unparsed.split("-")[-1]
         version = None
         if version_string.count(".") > 0:
-            if unparsed.count(".") != 2:
-                raise ValueError("Invalid package reference string")
+            if version_string.count(".") != 2:
+                raise ValueError(error)
             if unparsed.count("-") < 2:
-                raise ValueError("Invalid package reference string")
+                raise ValueError(error)
             version = StrictVersion(version_string)
             unparsed = unparsed[: -(len(version_string) + 1)]
 
@@ -117,7 +119,7 @@ class PackageReference:
         namespace = "-".join(unparsed.split("-")[:-1])
 
         if not (namespace and name):
-            raise ValueError("Invalid package reference string")
+            raise ValueError(error)
 
         return PackageReference(namespace=namespace, name=name, version=version)
 

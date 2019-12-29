@@ -22,6 +22,8 @@ from ..types import PackageReference
         ["a-b-0.0.1", False],
         ["fjwieojfoi wejoiof w", True],
         ["someUser-somePackage-1231203912.43.249234234", False],
+        ["Zocklukas-PermanentMountainChallange-1.1.1", False],
+        ["TheIllustriousMr.Judson-VindictiveRage-1.0.0", False],
     ],
 )
 def test_type_parsing(reference_string, should_raise):
