@@ -6,6 +6,10 @@
 import wx
 import wx.adv
 
+from collections import defaultdict
+
+from .enums import *
+
 # begin wxGlade: dependencies
 # end wxGlade
 
@@ -14,71 +18,208 @@ import wx.adv
 
 
 class MainFrame(wx.Frame):
+    tabs = {}
+    tabs_data = {}
+
     def __init__(self, *args, **kwds):
         # begin wxGlade: MainFrame.__init__
         kwds["style"] = kwds.get("style", 0) | wx.DEFAULT_FRAME_STYLE
         wx.Frame.__init__(self, *args, **kwds)
         self.SetSize((937, 647))
-        self.main_content_notebook = wx.Notebook(self, wx.ID_ANY)
-        self.manager_tab = wx.Panel(self.main_content_notebook, wx.ID_ANY)
-        self.installed_mods_uninstall_button = wx.Button(
-            self.manager_tab, wx.ID_ANY, "Uninstall"
+        self.selection_thunderstore_button = self.make_button(self, "More Details")
+        self.setup_selection_panel()
+        self.launch_game_button = self.make_button(self, "Launch Game")
+        self.progress_bar_big = wx.Gauge(self, wx.ID_ANY, 1000)
+        self.progress_bar_small = wx.Gauge(self, wx.ID_ANY, 1000)
+
+        self.__set_properties()
+        self.__do_layout()
+        # end wxGlade
+
+    def __set_properties(self):
+        # begin wxGlade: MainFrame.__set_properties
+        self.SetTitle("MythicModManager")
+        self.selection_title.SetFont(
+            wx.Font(
+                14,
+                wx.FONTFAMILY_DEFAULT,
+                wx.FONTSTYLE_NORMAL,
+                wx.FONTWEIGHT_NORMAL,
+                0,
+                "Segoe UI",
+            )
         )
-        self.installed_mods_update_button = wx.Button(
-            self.manager_tab, wx.ID_ANY, "Update installed mods"
+        self.selection_title.Wrap(160)
+        self.selection_description.Wrap(240)
+        self.selection_version.Wrap(240)
+        self.selection_download_count.Wrap(240)
+        # end wxGlade
+
+    def get_tab_and_tab_data(self, enum):
+        return self.tabs[enum.value], self.tabs_data[enum.value]
+
+    def make_button(self, tab, label):
+        return wx.Button(tab, wx.ID_ANY, label)
+
+    def setup_tabs(self, rootElement):
+        for tab in list(Tabs):
+            self.tabs[tab.value] = wx.Panel(rootElement, wx.ID_ANY)
+            self.tabs_data[tab.value] = {"name": tab.name, "children": {}}
+            rootElement.AddPage(self.tabs[tab.value], tab.value)
+
+        # Run Tab Setup Functions Here
+        self.setup_manager_tab()
+        self.setup_mod_list_tab()
+        self.setup_job_queue_tab()
+        self.setup_settings_tab()
+        self.setup_about_tab()
+
+    def make_buttons_for_tab_and_tab_data_from_enum_list(
+        self, enum_list, tab, tab_data
+    ):
+        buttons = []
+        for button in enum_list:
+            tab_data["children"][button.name] = self.make_button(
+                tab, button.value.title()
+            )
+            buttons.append(tab_data["children"][button.name])
+        return buttons
+
+    def setup_checkbox_for_list_sizer(self, tab, tab_data, title, ListEnum, is_checked=True):
+        key = "{}{}".format(ListEnum._name_, "checkbox")
+        tab_data["children"][key] = wx.CheckBox(
+            tab, wx.ID_ANY, title
         )
-        self.installed_mods_export_button = wx.Button(
-            self.manager_tab, wx.ID_ANY, "Export"
+        tab_data["children"][key].SetValue(1 if is_checked else 0)
+        return tab_data["children"][key]
+
+    def setup_search_for_list_sizer(self, tab, tab_data, ListEnum, title="", has_cancel_button=True):
+        key = "{}{}".format(ListEnum._name_, "search")
+        tab_data["children"][key] = wx.SearchCtrl(
+            tab, wx.ID_ANY, title
         )
-        self.installed_mods_import_button = wx.Button(
-            self.manager_tab, wx.ID_ANY, "Import"
+        tab_data["children"][key].ShowCancelButton(has_cancel_button)
+        return tab_data["children"][key]
+
+
+    def setup_list_sizer(
+        self, tab, tab_data, title, buttons, ListEnum, has_search=False, has_checkbox=False
+    ):
+        list_sizer = wx.BoxSizer(wx.VERTICAL)
+        buttons_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        if title:
+            list_sizer.Add(self.get_title_sizer(tab, title), 0, 0, 0)
+
+        for button in buttons:
+            buttons_sizer.Add(button, 1, wx.EXPAND, 0)
+        list_sizer.Add(buttons_sizer, 0, wx.EXPAND, 0)
+
+        if has_checkbox:
+            buttons_sizer.Add(self.setup_checkbox_for_list_sizer(tab, tab_data, "Group by version", ListEnum), 0, wx.ALIGN_CENTER, 0)
+
+        if has_search:
+            list_sizer.Add(self.setup_search_for_list_sizer(tab, tab_data, ListEnum), 0, wx.EXPAND, 0)
+
+        tab_data["children"][ListEnum._name_] = wx.ListCtrl(
+            tab, wx.ID_ANY, style=wx.LC_HRULES | wx.LC_REPORT | wx.LC_VRULES
         )
-        self.installed_mods_list = wx.ListCtrl(
-            self.manager_tab,
-            wx.ID_ANY,
-            style=wx.LC_HRULES | wx.LC_REPORT | wx.LC_VRULES,
+        list_sizer.Add(tab_data["children"][ListEnum._name_], 1, wx.EXPAND, 0)
+        return list_sizer
+
+    def setup_manager_tab(self):
+        tab, tab_data = self.get_tab_and_tab_data(Tabs.MANAGER)
+        manager_sizer = wx.BoxSizer(wx.VERTICAL)
+        
+        buttons = self.make_buttons_for_tab_and_tab_data_from_enum_list(
+            [
+                Buttons.UNINSTALL,
+                Buttons.UPDATE,
+                Buttons.EXPORT,
+                Buttons.IMPORT,
+                Buttons.INSTALL,
+                Buttons.DELETE,
+            ],
+            tab,
+            tab_data,
         )
-        self.downloaded_mods_install_button = wx.Button(
-            self.manager_tab, wx.ID_ANY, "Install"
+        installed_buttons = buttons[:4]
+        downloaded_buttons = buttons[4:]
+        manager_sizer.Add(
+            self.setup_list_sizer(
+                tab,
+                tab_data,
+                "Installed Mods",
+                installed_buttons,
+                ListCtrlEnums.INSTALLED,
+            ),
+            1,
+            wx.EXPAND,
+            0,
         )
-        self.downloaded_mods_delete_button = wx.Button(
-            self.manager_tab, wx.ID_ANY, "Delete"
+        manager_sizer.Add(
+            self.setup_list_sizer(
+                tab,
+                tab_data,
+                "Downloaded Mods",
+                downloaded_buttons,
+                ListCtrlEnums.DOWNLOADED,
+                has_checkbox=True
+            ),
+            1,
+            wx.EXPAND,
+            0,
         )
-        self.downloaded_mods_group_version_checkbox = wx.CheckBox(
-            self.manager_tab, wx.ID_ANY, "Group by version"
+        tab.SetSizer(manager_sizer)
+
+    def setup_mod_list_tab(self):
+        tab, tab_data = self.get_tab_and_tab_data(Tabs.MOD_LIST)
+        tab.SetSizer(
+            self.setup_list_sizer(
+                tab,
+                tab_data,
+                None,
+                self.make_buttons_for_tab_and_tab_data_from_enum_list(
+                    [Buttons.REFRESH, Buttons.INSTALL_SELECTED, Buttons.DOWNLOAD_SELECTED], tab, tab_data
+                ),
+                ListCtrlEnums.MODS,
+                has_search=True,
+            )
         )
-        self.downloaded_mods_list = wx.ListCtrl(
-            self.manager_tab,
-            wx.ID_ANY,
-            style=wx.LC_HRULES | wx.LC_REPORT | wx.LC_VRULES,
-        )
-        self.mod_list_tab = wx.Panel(self.main_content_notebook, wx.ID_ANY)
-        self.mod_list_refresh_button = wx.Button(
-            self.mod_list_tab, wx.ID_ANY, "Refresh"
-        )
-        self.mod_list_install_button = wx.Button(
-            self.mod_list_tab, wx.ID_ANY, "Install Selected"
-        )
-        self.mod_list_search = wx.SearchCtrl(self.mod_list_tab, wx.ID_ANY, "")
-        self.mod_list_list = wx.ListCtrl(
-            self.mod_list_tab,
-            wx.ID_ANY,
-            style=wx.LC_HRULES | wx.LC_REPORT | wx.LC_VRULES,
-        )
-        self.job_queue_tab = wx.Panel(self.main_content_notebook, wx.ID_ANY)
-        self.job_queue_list = wx.ListCtrl(
-            self.job_queue_tab,
+
+    def setup_job_queue_tab(self):
+        tab, tab_data = self.get_tab_and_tab_data(Tabs.JOB_QUEUE)
+        tab_data["children"][ListCtrlEnums.JOBS._name_] = wx.ListCtrl(
+            tab,
             wx.ID_ANY,
             style=wx.LC_HRULES | wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.LC_VRULES,
         )
-        self.settings_tab = wx.Panel(self.main_content_notebook, wx.ID_ANY)
-        self.about_tab = wx.Panel(self.main_content_notebook, wx.ID_ANY)
-        self.about_github_link = wx.adv.HyperlinkCtrl(
-            self.about_tab,
-            wx.ID_ANY,
-            "MythicModManager on GitHub",
-            "https://github.com/MythicManiac/MythicModManager/",
+        job_queue_sizer = wx.BoxSizer(wx.VERTICAL)
+        job_queue_sizer.Add(
+            tab_data["children"][ListCtrlEnums.JOBS._name_], 1, wx.EXPAND, 0
         )
+        tab.SetSizer(job_queue_sizer)
+
+    def setup_settings_tab(self):
+        pass
+
+    def setup_about_tab(self):
+        tab, tab_data = self.get_tab_and_tab_data(Tabs.ABOUT)
+        about_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        about_sizer.Add(
+            wx.adv.HyperlinkCtrl(
+                tab,
+                wx.ID_ANY,
+                "MythicModManager on GitHub",
+                "https://github.com/MythicManiac/MythicModManager/",
+            ),
+            0,
+            wx.ALIGN_CENTER,
+            0,
+        )
+        tab.SetSizer(about_sizer)
+
+    def setup_selection_panel(self):
         self.selection_icon_bitmap = wx.StaticBitmap(
             self,
             wx.ID_ANY,
@@ -101,60 +242,10 @@ class MainFrame(wx.Frame):
         self.selection_download_count = wx.StaticText(
             self.selection_info_panel, wx.ID_ANY, "Total downloads: 68309"
         )
-        self.selection_thunderstore_button = wx.Button(self, wx.ID_ANY, "More Details")
-        self.launch_game_button = wx.Button(self, wx.ID_ANY, "Launch Game")
-        self.progress_bar_big = wx.Gauge(self, wx.ID_ANY, 1000)
-        self.progress_bar_small = wx.Gauge(self, wx.ID_ANY, 1000)
 
-        self.__set_properties()
-        self.__do_layout()
-        # end wxGlade
-
-    def __set_properties(self):
-        # begin wxGlade: MainFrame.__set_properties
-        self.SetTitle("MythicModManager")
-        self.installed_mods_list.AppendColumn(
-            "Name", format=wx.LIST_FORMAT_LEFT, width=133
-        )
-        self.installed_mods_list.AppendColumn(
-            "Author", format=wx.LIST_FORMAT_LEFT, width=136
-        )
-        self.installed_mods_list.AppendColumn(
-            "Description", format=wx.LIST_FORMAT_LEFT, width=290
-        )
-        self.installed_mods_list.AppendColumn(
-            "Version", format=wx.LIST_FORMAT_LEFT, width=79
-        )
-        self.downloaded_mods_group_version_checkbox.SetValue(1)
-        self.downloaded_mods_list.AppendColumn(
-            "Name", format=wx.LIST_FORMAT_LEFT, width=132
-        )
-        self.downloaded_mods_list.AppendColumn(
-            "Author", format=wx.LIST_FORMAT_LEFT, width=138
-        )
-        self.downloaded_mods_list.AppendColumn(
-            "Description", format=wx.LIST_FORMAT_LEFT, width=288
-        )
-        self.downloaded_mods_list.AppendColumn(
-            "Version", format=wx.LIST_FORMAT_LEFT, width=-1
-        )
-        self.mod_list_search.ShowCancelButton(True)
-        self.mod_list_list.AppendColumn("Name", format=wx.LIST_FORMAT_LEFT, width=115)
-        self.mod_list_list.AppendColumn("Author", format=wx.LIST_FORMAT_LEFT, width=102)
-        self.mod_list_list.AppendColumn(
-            "Description", format=wx.LIST_FORMAT_LEFT, width=194
-        )
-        self.mod_list_list.AppendColumn("Version", format=wx.LIST_FORMAT_LEFT, width=-1)
-        self.mod_list_list.AppendColumn(
-            "Downloads", format=wx.LIST_FORMAT_LEFT, width=-1
-        )
-        self.job_queue_list.AppendColumn(
-            "Action", format=wx.LIST_FORMAT_LEFT, width=342
-        )
-        self.job_queue_list.AppendColumn(
-            "Parameter", format=wx.LIST_FORMAT_LEFT, width=315
-        )
-        self.selection_title.SetFont(
+    def get_title_sizer(self, tab, text):
+        title = wx.StaticText(tab, wx.ID_ANY, text)
+        title.SetFont(
             wx.Font(
                 14,
                 wx.FONTFAMILY_DEFAULT,
@@ -164,98 +255,19 @@ class MainFrame(wx.Frame):
                 "Segoe UI",
             )
         )
-        self.selection_title.Wrap(160)
-        self.selection_description.Wrap(240)
-        self.selection_version.Wrap(240)
-        self.selection_download_count.Wrap(240)
-        # end wxGlade
+        return title
 
-    def __do_layout(self):
-        # begin wxGlade: MainFrame.__do_layout
-        root_sizer = wx.BoxSizer(wx.VERTICAL)
+    def get_progress_bar_sizer(self):
         progress_bars_sizer = wx.BoxSizer(wx.VERTICAL)
-        main_content_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        progress_bars_sizer.Add(self.progress_bar_big, 1, wx.EXPAND, 0)
+        progress_bars_sizer.Add(self.progress_bar_small, 0, wx.EXPAND, 0)
+        return progress_bars_sizer
+
+    def get_selection_info_sizer(self):
         selection_info_sizer = wx.BoxSizer(wx.VERTICAL)
         selection_info_content_sizer = wx.BoxSizer(wx.VERTICAL)
         selection_info_buttons_sizer = wx.BoxSizer(wx.VERTICAL)
         selection_info_panel_sizer = wx.BoxSizer(wx.VERTICAL)
-        about_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        job_queue_sizer = wx.BoxSizer(wx.VERTICAL)
-        mod_list_sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer_1 = wx.BoxSizer(wx.HORIZONTAL)
-        manager_sizer = wx.BoxSizer(wx.VERTICAL)
-        downloaded_mods_sizer = wx.BoxSizer(wx.VERTICAL)
-        downloaded_mods_buttons_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        installed_mods_sizer = wx.BoxSizer(wx.VERTICAL)
-        installed_mods_buttons_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        installed_mods_title = wx.StaticText(
-            self.manager_tab, wx.ID_ANY, "Installed mods"
-        )
-        installed_mods_title.SetFont(
-            wx.Font(
-                14,
-                wx.FONTFAMILY_DEFAULT,
-                wx.FONTSTYLE_NORMAL,
-                wx.FONTWEIGHT_NORMAL,
-                0,
-                "Segoe UI",
-            )
-        )
-        installed_mods_sizer.Add(installed_mods_title, 0, 0, 0)
-        installed_mods_buttons_sizer.Add(
-            self.installed_mods_uninstall_button, 1, wx.EXPAND, 0
-        )
-        installed_mods_buttons_sizer.Add(
-            self.installed_mods_update_button, 1, wx.EXPAND, 0
-        )
-        installed_mods_buttons_sizer.Add(
-            self.installed_mods_export_button, 1, wx.EXPAND, 0
-        )
-        installed_mods_buttons_sizer.Add(
-            self.installed_mods_import_button, 1, wx.EXPAND, 0
-        )
-        installed_mods_sizer.Add(installed_mods_buttons_sizer, 0, wx.EXPAND, 0)
-        installed_mods_sizer.Add(self.installed_mods_list, 1, wx.EXPAND, 0)
-        manager_sizer.Add(installed_mods_sizer, 1, wx.EXPAND, 0)
-        downloaded_mods_title = wx.StaticText(
-            self.manager_tab, wx.ID_ANY, "Downloaded mods"
-        )
-        downloaded_mods_title.SetFont(
-            wx.Font(
-                14,
-                wx.FONTFAMILY_DEFAULT,
-                wx.FONTSTYLE_NORMAL,
-                wx.FONTWEIGHT_NORMAL,
-                0,
-                "Segoe UI",
-            )
-        )
-        downloaded_mods_sizer.Add(downloaded_mods_title, 0, 0, 0)
-        downloaded_mods_buttons_sizer.Add(self.downloaded_mods_install_button, 1, 0, 0)
-        downloaded_mods_buttons_sizer.Add(self.downloaded_mods_delete_button, 1, 0, 0)
-        downloaded_mods_buttons_sizer.Add(
-            self.downloaded_mods_group_version_checkbox, 0, wx.ALIGN_CENTER | wx.ALL, 4
-        )
-        downloaded_mods_sizer.Add(downloaded_mods_buttons_sizer, 0, wx.EXPAND, 0)
-        downloaded_mods_sizer.Add(self.downloaded_mods_list, 1, wx.EXPAND, 0)
-        manager_sizer.Add(downloaded_mods_sizer, 1, wx.EXPAND, 0)
-        self.manager_tab.SetSizer(manager_sizer)
-        sizer_1.Add(self.mod_list_refresh_button, 1, wx.EXPAND, 0)
-        sizer_1.Add(self.mod_list_install_button, 1, wx.EXPAND, 0)
-        mod_list_sizer.Add(sizer_1, 0, wx.EXPAND, 0)
-        mod_list_sizer.Add(self.mod_list_search, 0, wx.EXPAND, 0)
-        mod_list_sizer.Add(self.mod_list_list, 1, wx.EXPAND, 0)
-        self.mod_list_tab.SetSizer(mod_list_sizer)
-        job_queue_sizer.Add(self.job_queue_list, 1, wx.EXPAND, 0)
-        self.job_queue_tab.SetSizer(job_queue_sizer)
-        about_sizer.Add(self.about_github_link, 0, wx.ALIGN_CENTER, 0)
-        self.about_tab.SetSizer(about_sizer)
-        self.main_content_notebook.AddPage(self.manager_tab, "Manager")
-        self.main_content_notebook.AddPage(self.mod_list_tab, "Mod list")
-        self.main_content_notebook.AddPage(self.job_queue_tab, "Job queue")
-        self.main_content_notebook.AddPage(self.settings_tab, "Settings")
-        self.main_content_notebook.AddPage(self.about_tab, "About")
-        main_content_sizer.Add(self.main_content_notebook, 1, wx.EXPAND, 0)
         selection_info_sizer.Add(self.selection_icon_bitmap, 0, wx.EXPAND, 0)
         selection_info_panel_sizer.Add(self.selection_title, 50, 0, 0)
         selection_info_panel_sizer.Add(self.selection_description, 60, 0, 0)
@@ -273,11 +285,21 @@ class MainFrame(wx.Frame):
         selection_info_buttons_sizer.Add(self.launch_game_button, 0, wx.EXPAND, 0)
         selection_info_content_sizer.Add(selection_info_buttons_sizer, 0, wx.EXPAND, 0)
         selection_info_sizer.Add(selection_info_content_sizer, 1, wx.EXPAND, 0)
-        main_content_sizer.Add(selection_info_sizer, 0, wx.EXPAND, 0)
-        root_sizer.Add(main_content_sizer, 95, wx.EXPAND, 0)
-        progress_bars_sizer.Add(self.progress_bar_big, 1, wx.EXPAND, 0)
-        progress_bars_sizer.Add(self.progress_bar_small, 0, wx.EXPAND, 0)
-        root_sizer.Add(progress_bars_sizer, 8, wx.EXPAND, 0)
+        return selection_info_sizer
+
+    def get_main_content_sizer(self):
+        main_content_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        main_content_notebook = wx.Notebook(self, wx.ID_ANY)
+        self.setup_tabs(main_content_notebook)
+        main_content_sizer.Add(main_content_notebook, 1, wx.EXPAND, 0)
+        main_content_sizer.Add(self.get_selection_info_sizer(), 0, wx.EXPAND, 0)
+        return main_content_sizer
+
+    def __do_layout(self):
+        # begin wxGlade: MainFrame.__do_layout
+        root_sizer = wx.BoxSizer(wx.VERTICAL)
+        root_sizer.Add(self.get_main_content_sizer(), 95, wx.EXPAND, 0)
+        root_sizer.Add(self.get_progress_bar_sizer(), 8, wx.EXPAND, 0)
         self.SetSizer(root_sizer)
         self.Layout()
         # end wxGlade
