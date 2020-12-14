@@ -13,11 +13,9 @@
 
 ## Known limitations
 
-- Only BepInEx plugins are installable via the mod manager
-- Mods that aren't _BepInEx_ plugins (e.g. MonoMod plugins) will be "installed",
-but not actually work
-- Updating mods currently only works by disabling and re-enabling them, as
-enabling will always pull the latest version
+- Uninstalling unmanaged mods doesn't work. You will have to manually remove
+the files added by unmanaged mods and remove the entries from
+`Cyberpunk 2077/modding/mods/extracted` 
 
 ## Installation and usage
 
@@ -27,11 +25,11 @@ place where you're happy with storing mods as well.
 3. ???
 4. Profit
 
-_NOTE: If you have a non-standard Risk of Rain 2 install location, modify
-`config.json` accordingly_
+_NOTE: If you have a non-standard game install location, modify
+`config.toml` accordingly_
 
-_NOTE: MythicModManager best works with a clean Risk of Rain installation, which
-includes removing all existing mods._
+_NOTE: MythicModManager best works with a clean game installation, which
+includes removing any and all existing mods._
 
 _NOTE: The game has to be relaunched every time new mods are installed or
 uninstalled._
