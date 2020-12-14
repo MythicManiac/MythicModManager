@@ -4,21 +4,22 @@ import webbrowser
 
 from wxasync import WxAsyncApp, AsyncBind, StartCoroutine
 from asyncio.events import get_event_loop
-from pathlib import Path
 
-from ..system.manager import ModManager, ModManagerConfiguration, PackageMetadata
-from ..system.job_manager import JobManager
-from ..system.jobs import (
+from manager.config import Configuration
+from manager.system.manager import ModManager, ModManagerConfiguration, PackageMetadata
+from manager.system.job_manager import JobManager
+from manager.system.jobs import (
     DownloadAndInstallPackage,
     InstallPackage,
     UninstallPackage,
     DeletePackage,
 )
-from ..utils.log import log_exception
-from ..utils.install_finder import get_install_path
-from ..api.types import PackageReference
+from manager.utils.log import log_exception
+from manager.api.types import PackageReference
 
 from .generated import MainFrame
+from ..exceptions import GamePathNotFound
+from ..games.cyberpunk2077 import Cyberpunk2077
 
 
 class ObjectList:
@@ -135,22 +136,19 @@ class Application:
             column_labels=("Task", "Parameters"),
         )
 
-        risk_of_rain_path = get_install_path()
+        configuration = Configuration.load_or_create("config.toml")
+        self.game = Cyberpunk2077(configuration)
 
-        if not risk_of_rain_path:
+        try:
+            self.game.validate_paths()
+        except GamePathNotFound:
             wx.MessageBox(
-                "Failed to detect Risk of Rain 2 path. Add it to config.toml",
+                "Failed to detect game path. Add it to config.toml",
                 "Error",
                 wx.OK | wx.ICON_ERROR,
             )
-            risk_of_rain_path = Path("risk-of-rain-2")
 
-        self.configuration = ModManagerConfiguration(
-            thunderstore_url="https://thunderstore.io/",
-            mod_cache_path="mod-cache/",
-            mod_install_path=risk_of_rain_path / "BepInEx" / "plugins",
-            risk_of_rain_path=risk_of_rain_path,
-        )
+        self.configuration = ModManagerConfiguration(game=self.game)
         self.job_manager = JobManager(
             big_progress_bar=self.main_frame.progress_bar_big,
             small_progress_bar=self.main_frame.progress_bar_small,
@@ -207,7 +205,7 @@ class Application:
         self.main_frame.selection_download_count.SetLabel(downloads_text)
         self.main_frame.selection_download_count.Wrap(240)
 
-        if selection_meta.thunderstore_url:
+        if selection_meta.repository_url:
             self.main_frame.selection_thunderstore_button.Enable()
         else:
             self.main_frame.selection_thunderstore_button.Disable()
@@ -267,8 +265,8 @@ class Application:
 
     def handle_selection_thunderstore_button(self, event=None):
         meta = self.manager.resolve_package_metadata(self.current_selection)
-        if meta.thunderstore_url:
-            webbrowser.open(meta.thunderstore_url)
+        if meta.repository_url:
+            webbrowser.open(meta.repository_url)
 
     def bind_events(self):
         AsyncBind(
@@ -342,7 +340,7 @@ class Application:
         )
 
     async def handle_launch_game_button(self, event=None):
-        webbrowser.open_new("steam://run/632360")
+        self.game.launch_game()
 
     async def handle_installed_mod_list_export(self, event=None):
         CopyableDialog(
@@ -446,6 +444,5 @@ class Application:
         wx.Log.SetActiveTarget(wx.LogStderr())
         StartCoroutine(self.job_manager.worker, self.main_frame)
         StartCoroutine(self.manager.validate_cache, self.main_frame)
-        StartCoroutine(self.manager.migrate_mmm_prefixes, self.main_frame)
         loop = get_event_loop()
         loop.run_until_complete(self.app.MainLoop())

@@ -1,28 +1,29 @@
 import os
+from typing import Dict, Optional
+
 import requests_async
 import shutil
 import json
 
-from pathlib import Path
 from io import BytesIO
 
 from zipfile import ZipFile
 
-from ..api.types import PackageReference
-from ..api.thunderstore import ThunderstoreAPI
-from ..utils.log import log_exception
-
-from .jobs import DownloadAndInstallPackage
+from manager.api.types import PackageReference
+from manager.api.thunderstore import ThunderstoreAPI
+from manager.games.game import Game
+from manager.utils.log import log_exception
+from manager.utils.zip import extractall_starting_from
 
 
 class ModManagerConfiguration:
-    def __init__(
-        self, thunderstore_url, mod_cache_path, risk_of_rain_path, mod_install_path
-    ):
-        self.thunderstore_url = thunderstore_url
-        self.mod_cache_path = Path(mod_cache_path).resolve()
-        self.mod_install_path = Path(mod_install_path).resolve()
-        self.risk_of_rain_path = Path(risk_of_rain_path).resolve()
+    def __init__(self, game: Game):
+        self.game = game
+        self.repository_url = game.get_repository_url()
+        self.mod_cache_path = game.get_mod_cache_path().resolve()
+        self.managed_mods_path = game.get_managed_mods_path().resolve()
+        self.game_install_path = game.get_install_path().resolve()
+        self.extracted_log_path = game.get_extracted_log_path().resolve()
 
 
 class PackageMetadata:
@@ -36,7 +37,8 @@ class PackageMetadata:
         dependencies,
         icon_url=None,
         icon_data=None,
-        thunderstore_url=None,
+        repository_url=None,
+        extra_data: Optional[Dict] = None,
     ):
         self.namespace = namespace
         self.name = name
@@ -46,7 +48,8 @@ class PackageMetadata:
         self.icon_url = icon_url
         self.icon_data = icon_data
         self.dependencies = dependencies
-        self.thunderstore_url = thunderstore_url
+        self.repository_url = repository_url
+        self.extra_data = extra_data if type(extra_data) is dict else {}
 
     @property
     def package_reference(self):
@@ -55,7 +58,7 @@ class PackageMetadata:
         )
 
     @classmethod
-    def from_package(cls, package, thunderstore_url):
+    def from_package(cls, package, repository_url):
         if hasattr(package, "versions"):
             package = package.versions.latest
         return cls(
@@ -66,7 +69,7 @@ class PackageMetadata:
             icon_url=package.icon,
             downloads=package.downloads,
             dependencies=package.dependencies,
-            thunderstore_url=thunderstore_url,
+            repository_url=repository_url,
         )
 
     @classmethod
@@ -80,6 +83,10 @@ class PackageMetadata:
             downloads="",
             dependencies=[],
         )
+
+    @property
+    def install_strategy(self):
+        return self.extra_data.get("mmm_install_strategy", "")
 
     async def get_icon_bytes(self):
         if self.icon_data:
@@ -104,10 +111,11 @@ class PackageMetadata:
 
 class ModManager:
     def __init__(self, configuration, job_manager):
-        self.api = ThunderstoreAPI(configuration.thunderstore_url)
+        self.api = ThunderstoreAPI(configuration.repository_url)
         self.mod_cache_path = configuration.mod_cache_path
-        self.mod_install_path = configuration.mod_install_path
-        self.risk_of_rain_path = configuration.risk_of_rain_path
+        self.managed_mods_path = configuration.managed_mods_path
+        self.game_install_path = configuration.game_install_path
+        self.extracted_log_path = configuration.extracted_log_path
         self.job_manager = job_manager
         self.on_uninstall_callbacks = []
         self.on_install_callbacks = []
@@ -128,8 +136,12 @@ class ModManager:
 
     @property
     def installed_packages(self):
+        return list(set(self.extracted_packages + self.managed_packages))
+
+    @property
+    def managed_packages(self):
         result = []
-        for entry in self.mod_install_path.glob("*"):
+        for entry in self.managed_mods_path.glob("*"):
             if entry.is_dir() and (entry / "manifest.json").exists():
                 try:
                     result.append(PackageReference.parse(entry.name))
@@ -138,12 +150,22 @@ class ModManager:
         return result
 
     @property
+    def extracted_packages(self):
+        result = []
+        for entry in self.extracted_log_path.glob("*.json"):
+            try:
+                result.append(PackageReference.parse(entry.stem))
+            except Exception:
+                pass
+        return result
+
+    @property
     def cached_packages(self):
         return [
             PackageReference.parse(x.stem) for x in self.mod_cache_path.glob("*.zip")
         ]
 
-    def get_installed_package_metadata(self, reference):
+    def get_managed_package_metadata(self, reference):
         managed_path = self.get_managed_package_path(reference)
         manifest_path = managed_path / "manifest.json"
         icon_path = managed_path / "icon.png"
@@ -178,6 +200,7 @@ class ModManager:
                 description="",
                 downloads="Unknown",
                 dependencies=[],
+                extra_data={},
             )
 
         return PackageMetadata(
@@ -190,16 +213,8 @@ class ModManager:
             dependencies=[
                 PackageReference.parse(x) for x in data.get("dependencies", [])
             ],
+            extra_data=data.get("extra_data", {}),
         )
-
-    async def migrate_mmm_prefixes(self):
-        for entry in self.mod_install_path.glob("mmm-*"):
-            try:
-                reference = PackageReference.parse(entry.name[4:])
-                await self.job_manager.put(DownloadAndInstallPackage(self, reference))
-            except Exception as e:
-                log_exception(e)
-            shutil.rmtree(entry)
 
     async def validate_cache(self):
         for package in self.cached_packages:
@@ -228,8 +243,11 @@ class ModManager:
     def get_newest_cached(self, reference):
         return self.get_newest_from(reference, self.cached_packages)
 
-    def get_newest_installed(self, reference):
-        return self.get_newest_from(reference, self.installed_packages)
+    def get_newest_managed(self, reference):
+        return self.get_newest_from(reference, self.managed_packages)
+
+    def get_newest_extracted(self, reference):
+        return self.get_newest_from(reference, self.extracted_packages)
 
     def resolve_package_metadata(self, reference):
         """
@@ -245,12 +263,19 @@ class ModManager:
             return PackageMetadata.from_package(self.api.packages[reference], url)
 
         if not reference.version:
-            version = self.get_newest_installed(reference)
+            version = self.get_newest_managed(reference)
             if version:
-                return self.get_installed_package_metadata(version)
+                return self.get_managed_package_metadata(version)
 
-        if reference in self.installed_packages:
-            return self.get_installed_package_metadata(reference)
+        if reference in self.managed_packages:
+            return self.get_managed_package_metadata(reference)
+
+        if reference in self.extracted_packages:
+            if not reference.version:
+                version = self.get_newest_extracted(reference)
+                if version:
+                    return self.get_cached_package_metadata(version)
+            return self.get_cached_package_metadata(reference)
 
         if not reference.version:
             version = self.get_newest_cached(reference)
@@ -265,7 +290,10 @@ class ModManager:
         return self.mod_cache_path / f"{reference}.zip"
 
     def get_managed_package_path(self, reference):
-        return self.mod_install_path / f"{reference}"
+        return self.managed_mods_path / f"{reference}"
+
+    def get_extracted_log_path(self, reference):
+        return self.extracted_log_path / f"{reference}.json"
 
     async def download_package(self, reference, progress):
         download_url = self.api.get_package_download_url(reference)
@@ -310,27 +338,39 @@ class ModManager:
                 if package.is_same_package(reference):
                     await self.delete_package(package)
 
-    def install_extract_package(self, reference):
-        pass  # TODO: Implement
-
-    def install_managed_package(self, reference):
-        print(f"Installing {reference}... ", end="")
+    def install_managed(self, reference):
         package_path = self.get_package_cache_path(reference)
         target_dir = self.get_managed_package_path(reference)
-
         if not target_dir.is_dir():
             os.makedirs(target_dir)
-
-        if not package_path.exists():
-            print("Could not install, package was not found")
-            return
 
         with ZipFile(package_path) as unzip:
             if unzip.testzip():
                 # TODO: Handle better
                 raise RuntimeError("Corrupted zip file")
             unzip.extractall(target_dir)
-        print("Done!")
+
+    def install_extract(self, reference):
+        package_path = self.get_package_cache_path(reference)
+        if not package_path.exists():
+            print("Could not install, package was not found")
+            return
+
+        target_dir = self.game_install_path
+        if not target_dir.is_dir():
+            os.makedirs(target_dir)
+
+        log_target = self.get_extracted_log_path(reference)
+        logdir = os.path.dirname(log_target)
+        if logdir and not os.path.exists(logdir):
+            os.makedirs(logdir)
+
+        with ZipFile(package_path) as unzip:
+            extractall_starting_from(unzip, "gamedir", target_dir)
+            with unzip.open("manifest.json") as source, open(
+                log_target, "wb"
+            ) as target:
+                shutil.copyfileobj(source, target)
 
     async def install_package(self, reference, progress):
         if not reference.version:
@@ -352,8 +392,19 @@ class ModManager:
                 else:
                     await self.uninstall_package(installed_package)
 
-        # TODO: Add checking for managed vs. extract package install
-        self.install_managed_package(reference)
+        print(f"Installing {reference}... ", end="")
+
+        if not self.get_package_cache_path(reference).exists():
+            print("Could not install, package was not found")
+            return
+
+        metadata = self.get_cached_package_metadata(reference)
+        if metadata.install_strategy == "extract-gamedir":
+            self.install_extract(reference)
+        else:
+            self.install_managed(reference)
+
+        print("Done!")
 
         # TODO: Resolve dependencies in a safer way
         meta = self.resolve_package_metadata(reference)

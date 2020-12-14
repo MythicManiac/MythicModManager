@@ -1,4 +1,6 @@
 # Custom
+.idea
+testpackage/
 *.toml
 *.wxg.bak
 mod-cache/

@@ -1,0 +1,2 @@
+class GamePathNotFound(Exception):
+    pass
