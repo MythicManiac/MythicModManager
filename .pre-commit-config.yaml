@@ -16,9 +16,9 @@ repos:
         pass_filenames: false
         language: system
         types: [python]
-      - id: mypy
-        name: mypy
-        entry: mypy .
-        pass_filenames: false
-        language: system
-        types: [python]
+#      - id: mypy
+#        name: mypy
+#        entry: mypy .
+#        pass_filenames: false
+#        language: system
+#        types: [python]

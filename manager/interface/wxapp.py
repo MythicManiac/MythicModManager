@@ -112,9 +112,15 @@ class CopyableDialog(wx.Dialog):
         self.Destroy()
 
 
+class WxLocalizedApp(WxAsyncApp):
+    def OnInit(self):
+        self.locale = wx.Locale(wx.LANGUAGE_ENGLISH)
+        return super().OnInit()
+
+
 class Application:
     def __init__(self):
-        self.app = WxAsyncApp()
+        self.app = WxLocalizedApp()
         self.main_frame = MainFrame(None)
         self.remote_mod_list = ObjectList(
             element=self.main_frame.mod_list_list,
