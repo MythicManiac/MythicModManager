@@ -44,9 +44,10 @@ class Configuration:
             config_path = Path(filepath)
             if config_path.is_file():
                 config = toml.load(config_path)
+                return Configuration(filepath, config)
             else:
-                config = DEFAULT_CONFIG
-
-            return Configuration(filepath, config)
+                config = Configuration(filepath, DEFAULT_CONFIG)
+                config.save()
+                return config
         except Exception:
             raise ValueError("Config file is corrupt. Please repair or remove the file")
