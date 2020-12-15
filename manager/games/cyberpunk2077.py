@@ -40,10 +40,10 @@ class Cyberpunk2077(Game):
             aReg = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
             aKey = winreg.OpenKey(
                 aReg,
-                f"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Steam App {self.STEAM_ID}\\InstallLocation",
+                f"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Steam App {self.STEAM_ID}",
             )
 
-            path = Path(winreg.QueryValueEx(aKey, "SteamPath")[0])
+            path = Path(winreg.QueryValueEx(aKey, "InstallLocation")[0])
             winreg.CloseKey(aReg)
             winreg.CloseKey(aKey)
 
